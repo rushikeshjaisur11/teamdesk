@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { api } from './api'
-import type { Me } from './types'
+import type { Activity, Me, Task, Template } from './types'
 
 export const qk = {
   me: ['me'] as const,
@@ -42,4 +42,16 @@ export function useApprovalCount(wid: string, enabled: boolean) {
     queryFn: () => api<{ count: number }>(wpath(wid, '/approvals/count')),
     enabled, refetchInterval: 30_000,
   })
+}
+
+export function useTemplates(wid: string) {
+  return useQuery({ queryKey: qk.templates(wid), queryFn: () => api<Template[]>(wpath(wid, '/templates')), staleTime: 300_000 })
+}
+
+export function useTask(wid: string, id: string | undefined) {
+  return useQuery({ queryKey: qk.task(wid, id ?? ''), queryFn: () => api<Task>(wpath(wid, `/tasks/${id}`)), enabled: !!id })
+}
+
+export function useActivity(wid: string, id: string | undefined) {
+  return useQuery({ queryKey: qk.activity(wid, id ?? ''), queryFn: () => api<Activity[]>(wpath(wid, `/tasks/${id}/activity`)), enabled: !!id })
 }

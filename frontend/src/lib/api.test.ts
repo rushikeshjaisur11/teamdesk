@@ -1,3 +1,5 @@
+vi.unmock('./api')
+
 import { api, ApiError } from './api'
 
 afterEach(() => vi.unstubAllGlobals())
