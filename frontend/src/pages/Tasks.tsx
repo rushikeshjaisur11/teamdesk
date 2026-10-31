@@ -51,7 +51,7 @@ export function Tasks() {
   const [grouped, setGrouped] = useState(true)
   const [creating, setCreating] = useState(false)
   const query = useDebounced(q.trim(), 250)
-  const fromIdea = params.get('fromIdea') ?? undefined
+  const fromItem = params.get('fromItem') ?? undefined
   const wantsNew = params.has('new')
 
   const filters = { q: query, mine, status: statuses.join(','), type }
@@ -71,7 +71,7 @@ export function Tasks() {
   const filtering = !!(query || mine || statuses.length || type)
   const typeName = (key: string) => templates.data?.find((t) => t.key === key)?.name ?? key
   const open = (id: string) => navigate(`/w/${wid}/tasks/${id}`)
-  const closeIdea = () => { params.delete('fromIdea'); params.delete('title'); params.delete('new'); setParams(params, { replace: true }) }
+  const closeIdea = () => { params.delete('fromItem'); params.delete('title'); params.delete('new'); setParams(params, { replace: true }) }
   const filterButton = (active: boolean) => <Button variant={active ? 'secondary' : 'outline'} />
 
   const list = (
@@ -153,6 +153,7 @@ export function Tasks() {
                     <span className="task-id w-12 shrink-0 text-muted-foreground">#{t.number}</span>
                     <span className="min-w-0 flex-1 truncate">
                       <span className="font-medium">{t.title}</span>
+                      {!!t.checklist?.length && <span className="num ml-2 text-xs text-muted-foreground">{t.checklist.filter((c) => c.done).length}/{t.checklist.length}</span>}
                       {t.labels.slice(0, 2).map((l) => <span key={l} className="ml-2 hidden text-xs text-muted-foreground @3xl:inline">{l}</span>)}
                     </span>
                     <span className="hidden w-24 shrink-0 truncate text-muted-foreground @4xl:inline">{typeName(t.type_key)}</span>
@@ -180,9 +181,9 @@ export function Tasks() {
       {templates.data && (
         <TaskForm
           wid={wid} templates={templates.data}
-          open={creating || !!fromIdea || wantsNew}
+          open={creating || !!fromItem || wantsNew}
           onOpenChange={(o) => { setCreating(o); if (!o) closeIdea() }}
-          prefill={fromIdea ? { fromIdea, title: params.get('title') ?? '' } : undefined}
+          prefill={fromItem ? { fromItem, title: params.get('title') ?? '' } : undefined}
           onSaved={(t) => open(t.id)}
         />
       )}

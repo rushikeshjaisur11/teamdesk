@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from app.access import Ctx, require
 from app.audit import record
 from app.db import now
+from app.me import ChecklistItem, mark_promoted
 from app.notifications import approver_subs, notify
 from app.rules import find_matching_rule
 from app.scoped import out
@@ -23,7 +24,7 @@ class NewTask(BaseModel):
     fields: dict[str, FieldText] = {}
     labels: list[Label] | None = Field(None, max_length=20)
     submit: bool = False
-    from_idea_id: str | None = None
+    from_item_id: str | None = None
 
 
 class TaskPatch(BaseModel):
@@ -109,12 +110,11 @@ async def create_task(body: NewTask, ctx: Ctx = Depends(require("task.create")))
         "number": await ctx.scoped.next_seq("tasks"), "type_key": body.type_key, "title": body.title,
         "fields": body.fields, "labels": labels, "status": "draft",
         "author": {"sub": ctx.user.sub, "name": ctx.user.name, "email": ctx.user.email},
-        "decision": None, "duplicate_of": None, "snoozed_until": None, "jira_key": None,
+        "decision": None, "duplicate_of": None, "snoozed_until": None, "jira_key": None, "checklist": [],
         "search_text": search_text(body.fields, labels), "created_at": t, "updated_at": t, "submitted_at": None})
     await log_activity(ctx, task["_id"], "created")
-    if body.from_idea_id:
-        await ctx.scoped.col("ideas").update({"_id": body.from_idea_id, "owner_sub": ctx.user.sub},
-                                             {"$set": {"promoted_task_id": task["_id"]}})
+    if body.from_item_id:
+        await mark_promoted(ctx.scoped.db, ctx.user.sub, body.from_item_id, ctx.scoped.workspace_id, task["_id"])
     if body.submit:
         task = await submit_task(ctx, task)
     return view(task)
@@ -193,3 +193,17 @@ async def comment(task_id: str, body: Comment, ctx: Ctx = Depends(require("task.
     item = await log_activity(ctx, task_id, "comment", {"text": body.text})
     await notify(ctx, [task["author"]["sub"]], "comment", task, f"{ctx.user.name} commented on #{task['number']}")
     return out(item)
+
+
+@router.put("/{task_id}/checklist")
+async def put_checklist(task_id: str, body: Annotated[list[ChecklistItem], Field(max_length=50)],
+                        ctx: Ctx = Depends(require("task.view"))):
+    task = await load(ctx, task_id)
+    check_can_edit(ctx, task)
+    if task["status"] in ("rejected", "duplicate"):
+        raise HTTPException(409, "This task is closed.")
+    items = [i.model_dump() for i in body]
+    # Progress, not ticket content: updated_at stays put so an approver's open review isn't invalidated.
+    task = await ctx.scoped.col("tasks").update({"_id": task_id}, {"$set": {"checklist": items, "checklist_updated_at": now()}})
+    await log_activity(ctx, task_id, "checklist", {"done": sum(i["done"] for i in items), "total": len(items)})
+    return view(task)

@@ -1,3 +1,5 @@
+from app.db import now
+
 EDITABLE = {"draft", "changes_requested", "pending_approval"}
 
 _QUEUE = ["pending_approval", "snoozed"]
@@ -44,3 +46,8 @@ def rule_matches(rule: dict, type_key: str, author_roles: list[str], labels: lis
     return ((not rule["type_keys"] or type_key in rule["type_keys"])
             and (not rule["author_roles"] or any(r in rule["author_roles"] for r in author_roles))
             and (not rule["labels_any"] or any(l in rule["labels_any"] for l in labels)))
+
+
+def queue_filter() -> dict:
+    """Tasks waiting for a decision: pending, or snoozed until a time that has passed."""
+    return {"$or": [{"status": "pending_approval"}, {"status": "snoozed", "snoozed_until": {"$lte": now()}}]}

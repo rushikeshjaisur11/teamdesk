@@ -1,8 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
-import { lastWorkspace } from '@/lib/lastWorkspace'
 import { useMe } from '@/lib/queries'
-import { NoWorkspace } from './NoWorkspace'
 
 export function Home() {
   const { data: me, error } = useMe()
@@ -15,7 +13,5 @@ export function Home() {
     )
   }
   if (!me) return null
-  const last = lastWorkspace()
-  const target = me.workspaces.find((w) => w.id === last) ?? me.workspaces[0]
-  return target ? <Navigate to={`/w/${target.id}/tasks`} replace /> : <NoWorkspace me={me} />
+  return <Navigate to="/me/today" replace />
 }

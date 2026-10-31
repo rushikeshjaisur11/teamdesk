@@ -59,5 +59,5 @@ clients["meera"].post(f"/api/w/{WID}/tasks/{ids[0]}/comments", json={"text": "Ca
 r = clients["meera"].post(f"/api/w/{WID}/tasks/{ids[2]}/decision", json={"action": "request_changes", "reason": "Add who owns the on-call rota and how we test it."})
 r.raise_for_status()
 for text in ["Cache schema lookups in the loader?", "Ask platform team about a shared retry library"]:
-    admin.post(f"/api/w/{WID}/ideas", json={"text": text}).raise_for_status()
+    admin.post("/api/me/items", json={"kind": "idea", "title": text}).raise_for_status()
 print("seeded", len(ids), "tasks")

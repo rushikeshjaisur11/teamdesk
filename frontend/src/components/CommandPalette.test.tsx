@@ -43,3 +43,14 @@ it('switches workspace', async () => {
   await userEvent.click(await screen.findByRole('option', { name: /Switch to Other/ }))
   expect(screen.getByLabelText('location')).toHaveTextContent('/w/w2/tasks')
 })
+
+it('shows my items in their own group', async () => {
+  mockApi({ 'GET /api/auth/me': me(['task.view']), 'GET /api/w/w1/templates': [],
+    'GET /api/w/w1/tasks?q=vendor&limit=8': [],
+    'GET /api/me/items?q=vendor&limit=6': [{ id: 'p1', kind: 'task', title: 'Ring the vendor', status: 'open' }] })
+  render()
+  await userEvent.keyboard('{Control>}k{/Control}')
+  await userEvent.type(screen.getByRole('combobox'), 'vendor')
+  expect(await screen.findByText('Ring the vendor')).toBeInTheDocument()
+  expect(screen.getByText('My items')).toBeInTheDocument()
+})

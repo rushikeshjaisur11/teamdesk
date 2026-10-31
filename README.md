@@ -27,6 +27,16 @@ npm run dev
 
 There is no sign-in screen yet. Until company login is connected, every request without a session acts as the `DEV_USER_*` user. To try another person's view, restart the API with different `DEV_USER_*` values.
 
+## Background worker
+
+Reminders and waiting-on nudges are sent by a second process, the same image with a different command:
+
+```bash
+cd backend && uv run python -m app.worker   # every 60 s; safe to run several replicas
+```
+
+OpenShift: `deploy/openshift/worker.yaml`. Without it, nothing fires. Delivery is at most once. Email is sent only when `SMTP_HOST` is set.
+
 ## First-time setup
 
 1. Start the API with a `DEV_USER_GROUPS` value that includes the platform owner group (`teamdesk-platform-owners` by default).
@@ -85,3 +95,11 @@ oc apply -f deploy/openshift/configmap.yaml -f deploy/openshift/secret.yaml \
 ```
 
 Both images run as a non-root user and work with OpenShift's arbitrary UIDs. The web image serves the app on port 8080 and proxies `/api` to the `teamdesk-api` service. Don't expose TeamDesk to a shared audience until company login is connected.
+
+## My space
+
+Every person has a private space: **Today**, **Inbox** (captured ideas), **My tasks** (due dates, steps, repeats) and **Waiting on** (things you're chasing). Private notes on team tasks live there too.
+
+Nobody else can read it, workspace admins and platform owners included. The API enforces this: every personal query is filtered by the signed-in person's id inside one data layer (`backend/app/scoped.py`, `Personal`), and no endpoint accepts another person's id. Tests in `backend/tests/test_me_*.py` prove it.
+
+Shortcuts: `I` captures an idea. `G` then `T` opens Today, `G` then `M` My tasks, `G` then `I` Inbox, `G` then `W` Waiting on.

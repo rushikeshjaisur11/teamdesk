@@ -157,7 +157,7 @@ async def put_roles(body: dict[RoleKey, Role], ctx: Ctx = Depends(require("roles
 async def members(ctx: Ctx = Depends(require("task.view"))):
     result = []
     async for u in ctx.scoped.db.users.find({}, sort=[("name", 1)]):
-        roles, _ = resolve(ctx.workspace, u["groups"])
+        roles, _ = resolve(ctx.workspace, u.get("groups", []))
         if roles:
-            result.append({"sub": u["_id"], "name": u["name"], "email": u["email"], "roles": roles})
+            result.append({"sub": u["_id"], "name": u.get("name", ""), "email": u.get("email", ""), "roles": roles})
     return result
