@@ -27,6 +27,16 @@ npm run dev
 
 There is no sign-in screen yet. Until company login is connected, every request without a session acts as the `DEV_USER_*` user. To try another person's view, restart the API with different `DEV_USER_*` values.
 
+## Background worker
+
+Reminders and waiting-on nudges are sent by a second process, the same image with a different command:
+
+```bash
+cd backend && uv run python -m app.worker   # every 60 s; safe to run several replicas
+```
+
+OpenShift: `deploy/openshift/worker.yaml`. Without it, nothing fires. Delivery is at most once. Email is sent only when `SMTP_HOST` is set.
+
 ## First-time setup
 
 1. Start the API with a `DEV_USER_GROUPS` value that includes the platform owner group (`teamdesk-platform-owners` by default).
