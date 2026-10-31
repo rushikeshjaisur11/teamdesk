@@ -120,3 +120,11 @@ async def test_labels_default_from_template(ws_with_dev):
                      {"key": "acceptance", "label": "Acceptance criteria", "required": True, "hint": ""}]})
     assert (await create(c, wid))["labels"] == ["feature"]
     assert (await create(c, wid, labels=["x"]))["labels"] == ["x"]
+
+
+async def test_filter_by_number(ws_with_dev):
+    wid, c = ws_with_dev
+    await create(c, wid, title="first")
+    await create(c, wid, title="second")
+    assert [t["title"] for t in (await c["dev"].get(f"/api/w/{wid}/tasks", params={"number": 2})).json()] == ["second"]
+    assert (await c["dev"].get(f"/api/w/{wid}/tasks", params={"number": 99})).json() == []

@@ -1,7 +1,9 @@
 import { Inbox, Keyboard, ListTodo, Moon, Settings, Stamp, Sun } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
+import { CommandPalette } from '@/components/CommandPalette'
+import { NotificationBell } from '@/components/NotificationBell'
 import { QuickCapture } from '@/components/QuickCapture'
 import { ShortcutSheet } from '@/components/ShortcutSheet'
 import { Sidebar, type NavItem } from '@/components/Sidebar'
@@ -17,6 +19,8 @@ export function WorkspaceLayout() {
   const { wid, ws, me, can } = useWorkspace()
   const [theme, setT] = useState(currentTheme())
   const [help, setHelp] = useState(false)
+  const [capture, setCapture] = useState(false)
+  const navigate = useNavigate()
   const approvals = useApprovalCount(wid, can('task.approve'))
   useShortcut('?', () => setHelp(true))
   useEffect(() => { if (ws) rememberWorkspace(ws.id) }, [ws])
@@ -48,6 +52,7 @@ export function WorkspaceLayout() {
           header={
             <div className="flex items-center gap-1">
               <div className="min-w-0 flex-1"><WorkspaceSwitcher me={me} wid={wid} compact={compact} /></div>
+              {!compact && <NotificationBell wid={wid} />}
             </div>
           }
           footer={
@@ -62,7 +67,8 @@ export function WorkspaceLayout() {
     >
       <Outlet />
       <ShortcutSheet open={help} onOpenChange={setHelp} />
-      {can('task.create') && <QuickCapture wid={wid} />}
+      {can('task.create') && <QuickCapture wid={wid} open={capture} onOpenChange={setCapture} />}
+      <CommandPalette onNewTask={() => navigate(`/w/${wid}/tasks?new=1`)} onCapture={() => setCapture(true)} />
     </AppShell>
   )
 }

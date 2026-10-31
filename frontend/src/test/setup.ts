@@ -7,3 +7,6 @@ vi.mock('@/lib/api', async (orig) => ({ ...(await orig<typeof import('@/lib/api'
 Element.prototype.setPointerCapture ??= () => {}
 Element.prototype.releasePointerCapture ??= () => {}
 Element.prototype.hasPointerCapture ??= () => false
+// cmdk measures its list and scrolls items into view; jsdom has neither API.
+globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver
+Element.prototype.scrollIntoView ??= () => {}

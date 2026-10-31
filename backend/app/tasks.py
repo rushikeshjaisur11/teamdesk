@@ -119,13 +119,15 @@ async def create_task(body: NewTask, ctx: Ctx = Depends(require("task.create")))
 
 
 @router.get("")
-async def list_tasks(status: str = "", type: str = "", mine: bool = False, q: str = "",
+async def list_tasks(status: str = "", type: str = "", mine: bool = False, q: str = "", number: int | None = None,
                      limit: int = Query(200, ge=1, le=500), ctx: Ctx = Depends(require("task.view"))):
     f: dict = {}
     if status:
         f["status"] = {"$in": status.split(",")}
     if type:
         f["type_key"] = type
+    if number is not None:
+        f["number"] = number
     if mine:
         f["author.sub"] = ctx.user.sub
     sort = [("updated_at", -1), ("_id", -1)]

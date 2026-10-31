@@ -8,9 +8,13 @@ import { qk, wpath } from '@/lib/queries'
 import { useShortcut } from '@/lib/useShortcut'
 
 /** Press I anywhere in a workspace to jot an idea into your private inbox. */
-export function QuickCapture({ wid }: { wid: string }) {
+export function QuickCapture({ wid, open: controlled, onOpenChange }: {
+  wid: string; open?: boolean; onOpenChange?: (open: boolean) => void
+}) {
   const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
+  const [own, setOwn] = useState(false)
+  const open = controlled ?? own
+  const setOpen = onOpenChange ?? setOwn
   const [text, setText] = useState('')
   useShortcut('i', () => setOpen(true))
   const save = useMutation({

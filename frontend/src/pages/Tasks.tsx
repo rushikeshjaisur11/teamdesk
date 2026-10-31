@@ -38,6 +38,7 @@ export function Tasks() {
   const [creating, setCreating] = useState(false)
   const query = useDebounced(q.trim(), 250)
   const fromIdea = params.get('fromIdea') ?? undefined
+  const wantsNew = params.has('new')
 
   const filters = { q: query, mine, status: statuses.join(','), type }
   const tasks = useQuery({
@@ -56,7 +57,7 @@ export function Tasks() {
   const filtering = !!(query || mine || statuses.length || type)
   const typeName = (key: string) => templates.data?.find((t) => t.key === key)?.name ?? key
   const open = (id: string) => navigate(`/w/${wid}/tasks/${id}`)
-  const closeIdea = () => { params.delete('fromIdea'); params.delete('title'); setParams(params, { replace: true }) }
+  const closeIdea = () => { params.delete('fromIdea'); params.delete('title'); params.delete('new'); setParams(params, { replace: true }) }
 
   const list = (
     <>
@@ -158,7 +159,7 @@ export function Tasks() {
       {templates.data && (
         <TaskForm
           wid={wid} templates={templates.data}
-          open={creating || !!fromIdea}
+          open={creating || !!fromIdea || wantsNew}
           onOpenChange={(o) => { setCreating(o); if (!o) closeIdea() }}
           prefill={fromIdea ? { fromIdea, title: params.get('title') ?? '' } : undefined}
           onSaved={(t) => open(t.id)}
