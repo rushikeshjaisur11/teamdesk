@@ -20,7 +20,7 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   task?: Task
-  prefill?: { title?: string; fromIdea?: string }
+  prefill?: { title?: string; fromItem?: string }
   onSaved?: (task: Task) => void
 }
 
@@ -66,7 +66,7 @@ export function TaskForm({ wid, templates, open, onOpenChange, task, prefill, on
       }
       return api<Task>(wpath(wid, '/tasks'), {
         method: 'POST',
-        json: { type_key: typeKey, title, fields: filled, labels: labelList.length ? labelList : undefined, submit, from_idea_id: prefill?.fromIdea },
+        json: { type_key: typeKey, title, fields: filled, labels: labelList.length ? labelList : undefined, submit, from_item_id: prefill?.fromItem },
       })
     },
     onMutate: () => {

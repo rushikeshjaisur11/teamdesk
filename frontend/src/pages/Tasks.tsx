@@ -51,7 +51,7 @@ export function Tasks() {
   const [grouped, setGrouped] = useState(true)
   const [creating, setCreating] = useState(false)
   const query = useDebounced(q.trim(), 250)
-  const fromIdea = params.get('fromIdea') ?? undefined
+  const fromItem = params.get('fromItem') ?? undefined
   const wantsNew = params.has('new')
 
   const filters = { q: query, mine, status: statuses.join(','), type }
@@ -71,7 +71,7 @@ export function Tasks() {
   const filtering = !!(query || mine || statuses.length || type)
   const typeName = (key: string) => templates.data?.find((t) => t.key === key)?.name ?? key
   const open = (id: string) => navigate(`/w/${wid}/tasks/${id}`)
-  const closeIdea = () => { params.delete('fromIdea'); params.delete('title'); params.delete('new'); setParams(params, { replace: true }) }
+  const closeIdea = () => { params.delete('fromItem'); params.delete('title'); params.delete('new'); setParams(params, { replace: true }) }
   const filterButton = (active: boolean) => <Button variant={active ? 'secondary' : 'outline'} />
 
   const list = (
@@ -180,9 +180,9 @@ export function Tasks() {
       {templates.data && (
         <TaskForm
           wid={wid} templates={templates.data}
-          open={creating || !!fromIdea || wantsNew}
+          open={creating || !!fromItem || wantsNew}
           onOpenChange={(o) => { setCreating(o); if (!o) closeIdea() }}
-          prefill={fromIdea ? { fromIdea, title: params.get('title') ?? '' } : undefined}
+          prefill={fromItem ? { fromItem, title: params.get('title') ?? '' } : undefined}
           onSaved={(t) => open(t.id)}
         />
       )}

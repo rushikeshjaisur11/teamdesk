@@ -12,7 +12,6 @@ export const qk = {
   activity: (wid: string, id: string) => ['w', wid, 'task', id, 'activity'] as const,
   similar: (wid: string, text: string) => ['w', wid, 'similar', text] as const,
   templates: (wid: string) => ['w', wid, 'templates'] as const,
-  ideas: (wid: string) => ['w', wid, 'ideas'] as const,
   approvals: (wid: string) => ['w', wid, 'approvals'] as const,
   approvalCount: (wid: string) => ['w', wid, 'approvals', 'count'] as const,
   notifications: (wid: string) => ['w', wid, 'notifications'] as const,

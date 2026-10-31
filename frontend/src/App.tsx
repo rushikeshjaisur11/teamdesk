@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { PageHeader } from '@/components/PageHeader'
+import { MyInbox } from '@/pages/me/MyInbox'
+import { MyTasks } from '@/pages/me/MyTasks'
+import { Today } from '@/pages/me/Today'
+import { Waiting } from '@/pages/me/Waiting'
 import { Approvals } from '@/pages/Approvals'
 import { Home } from '@/pages/Home'
-import { Inbox } from '@/pages/Inbox'
 import { Workspaces } from '@/pages/platform/Workspaces'
 import { SettingsLayout } from '@/pages/settings/SettingsLayout'
 import { Tasks } from '@/pages/Tasks'
@@ -14,14 +16,14 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/me" element={<AppLayout />}>
         <Route index element={<Navigate to="today" replace />} />
-        <Route path="today" element={<PageHeader title="Today" />} />
-        <Route path="inbox" element={<PageHeader title="Inbox" />} />
-        <Route path="tasks" element={<PageHeader title="My tasks" />} />
-        <Route path="waiting" element={<PageHeader title="Waiting on" />} />
+        <Route path="today" element={<Today />} />
+        <Route path="inbox" element={<MyInbox />} />
+        <Route path="tasks" element={<MyTasks />} />
+        <Route path="waiting" element={<Waiting />} />
       </Route>
       <Route path="/w/:wid" element={<AppLayout />}>
         <Route index element={<Navigate to="tasks" replace />} />
-        <Route path="inbox" element={<Inbox />} />
+        <Route path="inbox" element={<Navigate to="/me/inbox" replace />} />
         <Route path="tasks/:taskId?" element={<Tasks />} />
         <Route path="approvals" element={<Approvals />} />
         <Route path="settings/*" element={<SettingsLayout />} />
