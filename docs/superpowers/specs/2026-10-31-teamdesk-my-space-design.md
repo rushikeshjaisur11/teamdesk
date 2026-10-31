@@ -159,6 +159,10 @@ Everything in the main spec's constraints holds (MongoDB 8.0, PyMongo Async, no 
 - Morning brief is in-app only, generated on first open each day.
 - The calendar feed shows titles only.
 
+Owner decisions (2026-10-31, owner said "Next" to the designer's suggestions):
+- **Privacy is enforced by the app**, with no encryption at rest. Direct database access is governed by the platform team's database access controls.
+- **AI may read a person's own private items** for that person's features only. Each person has a "Use AI on my space" switch, on by default. With it off, no personal content goes to the model.
+
 Answers to the builder check (designer's calls):
 - **No migration of Phase 2 ideas:** there is no production data yet. Personal ideas replace the workspace idea inbox, and its endpoints are removed.
 - **User record and time zone:** the existing `users` collection holds `tz`. It is updated from the browser on each visit, so travel moves "today" with the person. The env default user is upserted there at startup.
