@@ -1,4 +1,3 @@
-import pytest
 
 from tests.conftest import OWNER, login
 
@@ -41,7 +40,6 @@ async def test_owner_lists_workspaces(make_client):
     assert [w["slug"] for w in (await c.get("/api/platform/workspaces")).json()] == ["aa", "bb"]
 
 
-@pytest.mark.xfail(strict=True, reason="settings route arrives in Task 5")
 async def test_owner_without_mapping_cannot_open_workspace(make_client):
     c = await make_client(); await login(c, "own", OWNER)
     wid = (await c.post("/api/platform/workspaces", json={"name": "A", "slug": "aa", "admin_group": "g"})).json()["id"]
@@ -49,7 +47,6 @@ async def test_owner_without_mapping_cannot_open_workspace(make_client):
     assert r.status_code == 404 and r.json()["detail"] == "Workspace not found."
 
 
-@pytest.mark.xfail(strict=True, reason="settings route arrives in Task 5")
 async def test_archived_workspace_disappears(make_client):
     owner = await make_client(); await login(owner, "own", OWNER)
     wid = (await owner.post("/api/platform/workspaces", json={"name": "A", "slug": "aa", "admin_group": "g-admin"})).json()["id"]

@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 from pymongo import AsyncMongoClient
 
-from app import auth, workspaces
+from app import audit, auth, workspaces
 from app.config import APP_NAME, Settings
 from app.db import ensure_indexes
 
@@ -26,6 +26,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                        https_only=settings.https_only_cookies, same_site="lax")
     app.include_router(auth.router)
     app.include_router(workspaces.router)
+    app.include_router(workspaces.ws_router)
+    app.include_router(audit.router)
 
     @app.get("/api/health")
     async def health(request: Request):

@@ -1,8 +1,12 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
+from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
-from app.access import create_workspace, resolve
+from app.access import PERMISSIONS, Ctx, create_workspace, require, resolve
+from app.audit import record
 from app.auth import User, current_user, is_platform_owner
 
 router = APIRouter()
@@ -59,3 +63,87 @@ async def me(request: Request, user: User = Depends(current_user)):
     return {"user": {"sub": user.sub, "name": user.name, "email": user.email,
                      "is_platform_owner": is_platform_owner(user, request.app.state.settings)},
             "workspaces": workspaces}
+
+
+# ---- workspace settings (inside a workspace) ----
+ws_router = APIRouter(prefix="/api/w/{workspace_id}")
+LOCKOUT = "At least one group must map to a role that can manage roles, or nobody could fix access."
+
+
+class Mapping(BaseModel):
+    group: str = Field(min_length=1, max_length=200)
+    role: str
+
+
+class Role(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+    permissions: list[str]
+
+
+class SettingsPatch(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
+RoleKey = Annotated[str, StringConstraints(pattern=r"^[a-z0-9_-]{2,30}$")]
+
+
+def settings_view(ws: dict) -> dict:
+    return {"name": ws["name"], "slug": ws["slug"], "group_mappings": ws["group_mappings"], "roles": ws["roles"]}
+
+
+def check_lockout(mappings: list[dict], roles: dict) -> None:
+    if not any("roles.manage" in roles.get(m["role"], {}).get("permissions", []) for m in mappings):
+        raise HTTPException(422, LOCKOUT)
+
+
+async def save(ctx: Ctx, fields: dict) -> dict:
+    return await ctx.scoped.db.workspaces.find_one_and_update(
+        {"_id": ctx.scoped.workspace_id}, {"$set": fields}, return_document=ReturnDocument.AFTER)
+
+
+@ws_router.get("/settings")
+async def get_settings(ctx: Ctx = Depends(require("settings.manage"))):
+    return settings_view(ctx.workspace)
+
+
+@ws_router.patch("/settings")
+async def patch_settings(body: SettingsPatch, ctx: Ctx = Depends(require("settings.manage"))):
+    ws = await save(ctx, {"name": body.name})
+    await record(ctx, "settings.updated", "workspace", {"name": body.name})
+    return settings_view(ws)
+
+
+@ws_router.put("/group-mappings")
+async def put_mappings(body: list[Mapping], ctx: Ctx = Depends(require("roles.manage"))):
+    mappings = [m.model_dump() for m in body]
+    for m in mappings:
+        if m["role"] not in ctx.workspace["roles"]:
+            raise HTTPException(422, f"Unknown role: {m['role']}.")
+    check_lockout(mappings, ctx.workspace["roles"])
+    ws = await save(ctx, {"group_mappings": mappings})
+    await record(ctx, "group_mappings.updated", "workspace", {"group_mappings": mappings})
+    return ws["group_mappings"]
+
+
+@ws_router.put("/roles")
+async def put_roles(body: dict[RoleKey, Role], ctx: Ctx = Depends(require("roles.manage"))):
+    roles = {k: r.model_dump() for k, r in body.items()}
+    for key, r in roles.items():
+        bad = [p for p in r["permissions"] if p not in PERMISSIONS]
+        if bad:
+            raise HTTPException(422, f"Unknown permission in {key}: {', '.join(bad)}.")
+    mappings = [m for m in ctx.workspace["group_mappings"] if m["role"] in roles]
+    check_lockout(mappings, roles)
+    ws = await save(ctx, {"roles": roles, "group_mappings": mappings})
+    await record(ctx, "roles.updated", "workspace", {"roles": sorted(roles)})
+    return settings_view(ws)
+
+
+@ws_router.get("/members")
+async def members(ctx: Ctx = Depends(require("task.view"))):
+    result = []
+    async for u in ctx.scoped.db.users.find({}, sort=[("name", 1)]):
+        roles, _ = resolve(ctx.workspace, u["groups"])
+        if roles:
+            result.append({"sub": u["_id"], "name": u["name"], "email": u["email"], "roles": roles})
+    return result
