@@ -2,6 +2,7 @@ import { Inbox, Keyboard, ListTodo, Moon, Settings, Stamp, Sun } from 'lucide-re
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
+import { QuickCapture } from '@/components/QuickCapture'
 import { ShortcutSheet } from '@/components/ShortcutSheet'
 import { Sidebar, type NavItem } from '@/components/Sidebar'
 import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher'
@@ -61,6 +62,7 @@ export function WorkspaceLayout() {
     >
       <Outlet />
       <ShortcutSheet open={help} onOpenChange={setHelp} />
+      {can('task.create') && <QuickCapture wid={wid} />}
     </AppShell>
   )
 }
