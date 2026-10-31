@@ -192,10 +192,10 @@ Screen list: Sign-in · Workspace switcher · Inbox · Task list (filters, saved
 
 1. **Foundation:** sign-in, workspaces, roles and group mapping, settings shell, design system and app shell, isolation tests.
 2. **Tasks:** idea inbox, templates and task types, task list and detail, approval queue, auto-approve rules, activity timeline, notifications (in-app + email).
-3. **Jira:** connection settings, ticket creation with retry, status sync (webhook + reconcile).
+3. **Jira + AI ticket drafting:** connection settings (service account and per-user accounts, Cloud and Data Center), ticket creation with retry, status sync (webhook + reconcile), Jira mirror with per-user visibility, and the AI "Draft with AI" button on the task form (owner wants AI-created Jira tickets early, so drafting moves here from phase 6).
 4. **GitHub:** connection, branch creation, PR status, Actions snippet.
 5. **Docs:** folders, editor, history, doc–task links, search palette across tasks and docs, Confluence import.
-6. **AI:** ticket drafting, duplicate detection, ask the docs, meeting notes → tasks.
+6. **AI:** duplicate detection by meaning, ask the docs, meeting notes → tasks.
 7. **Extras:** Excel import/export, dashboard, Teams/Slack webhooks.
 
 Each phase ends with a working, demoable app.
