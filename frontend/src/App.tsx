@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { Approvals } from '@/pages/Approvals'
 import { Home } from '@/pages/Home'
 import { Inbox } from '@/pages/Inbox'
 import { Placeholder } from '@/pages/Placeholder'
@@ -16,7 +17,7 @@ export default function App() {
         <Route index element={<Navigate to="tasks" replace />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="tasks/:taskId?" element={<Tasks />} />
-        <Route path="approvals" element={<Placeholder title="Approvals" />} />
+        <Route path="approvals" element={<Approvals />} />
         <Route path="settings/*" element={<Placeholder title="Settings" />} />
       </Route>
       <Route path="/platform/workspaces" element={<Placeholder title="Workspaces" />} />
