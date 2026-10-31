@@ -1,11 +1,10 @@
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 from pymongo import AsyncMongoClient
 
-from app import auth
-from app.auth import User, current_user, is_platform_owner
+from app import auth, workspaces
 from app.config import APP_NAME, Settings
 from app.db import ensure_indexes
 
@@ -26,12 +25,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(SessionMiddleware, secret_key=settings.session_secret, max_age=settings.session_max_age,
                        https_only=settings.https_only_cookies, same_site="lax")
     app.include_router(auth.router)
-
-    @app.get("/api/auth/me")
-    async def me(request: Request, user: User = Depends(current_user)):
-        return {"user": {"sub": user.sub, "name": user.name, "email": user.email,
-                         "is_platform_owner": is_platform_owner(user, request.app.state.settings)},
-                "workspaces": []}
+    app.include_router(workspaces.router)
 
     @app.get("/api/health")
     async def health(request: Request):

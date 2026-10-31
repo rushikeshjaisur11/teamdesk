@@ -52,3 +52,14 @@ async def login(client, sub: str, groups: list[str], name: str | None = None):
     r = await client.post("/api/auth/dev-login", json={
         "sub": sub, "name": name or sub.title(), "email": f"{sub}@example.com", "groups": groups})
     assert r.status_code == 204, r.text
+
+
+OWNER = ["teamdesk-platform-owners"]
+
+
+async def make_workspace(make_client, slug: str = "team", admin_group: str = "g-admin") -> str:
+    c = await make_client()
+    await login(c, "platform-owner", OWNER)
+    r = await c.post("/api/platform/workspaces", json={"name": slug.title(), "slug": slug, "admin_group": admin_group})
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
