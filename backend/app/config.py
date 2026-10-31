@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     https_only_cookies: bool = True
     dev_login_enabled: bool = False
     platform_owner_group: str = "teamdesk-platform-owners"
+    # Interim identity until company login is connected: requests without a session act as this user.
+    # Leave dev_user_sub empty in any shared environment.
+    dev_user_sub: str = ""
+    dev_user_name: str = ""
+    dev_user_email: str = ""
+    dev_user_groups: str = ""
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""

@@ -23,7 +23,8 @@
 - Default roles: Admin, Approver, Member, Viewer (Task 4 defines their permission sets).
 - **Self-approval is always blocked** (compliance control: Jira key before merge). No setting allows it.
 - **Developer tasks skip the queue:** every new workspace is seeded with an enabled rule "Developer tasks skip the queue" (`author_roles: ["member"]`, other lists empty).
-- **Company sign-in is out of scope** (owner adds it later). The only sign-in is the interim form (name, email, groups) through `sign_in(request, user)`.
+- **No sign-in screen** (owner, mid-execution): requests without a session act as the env default user (`DEV_USER_*`). `/api/auth/dev-login` stays for tests/scripts only. Company login later calls `sign_in(request, user)`.
+- **After Task 19:** a professional UI polish pass across all screens (owner request).
 - Length limits: task title ≤ 200 chars, each template field ≤ 20,000, comment ≤ 10,000, idea ≤ 2,000, reject reason ≤ 2,000.
 - Interim sign-in is enabled only when `DEV_LOGIN_ENABLED=true` (default `false`).
 - No AI code in this plan. No Jira/GitHub calls in this plan (approve ends at status `approved`).

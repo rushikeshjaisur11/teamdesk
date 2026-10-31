@@ -1,14 +1,12 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { Inbox, Keyboard, ListTodo, LogOut, Moon, Settings, Stamp, Sun } from 'lucide-react'
+import { Inbox, Keyboard, ListTodo, Moon, Settings, Stamp, Sun } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
-import { Navigate, Outlet, useNavigate } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
 import { ShortcutSheet } from '@/components/ShortcutSheet'
 import { Sidebar, type NavItem } from '@/components/Sidebar'
 import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { api } from '@/lib/api'
 import { rememberWorkspace } from '@/lib/lastWorkspace'
 import { useApprovalCount, useWorkspace } from '@/lib/queries'
 import { currentTheme, setTheme } from '@/lib/theme'
@@ -16,8 +14,6 @@ import { useShortcut } from '@/lib/useShortcut'
 
 export function WorkspaceLayout() {
   const { wid, ws, me, can } = useWorkspace()
-  const navigate = useNavigate()
-  const qc = useQueryClient()
   const [theme, setT] = useState(currentTheme())
   const [help, setHelp] = useState(false)
   const approvals = useApprovalCount(wid, can('task.approve'))
@@ -35,7 +31,6 @@ export function WorkspaceLayout() {
   ]
 
   const toggleTheme = () => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); setT(t) }
-  const signOut = async () => { await api('/api/auth/logout', { method: 'POST' }); qc.clear(); navigate('/login') }
   const iconButton = (label: string, onClick: () => void, icon: ReactNode) => (
     <Tooltip>
       <TooltipTrigger render={<Button variant="ghost" size="icon" aria-label={label} onClick={onClick} />}>{icon}</TooltipTrigger>
@@ -59,7 +54,6 @@ export function WorkspaceLayout() {
               {!compact && <span className="min-w-0 flex-1 truncate px-1" title={me.user.email}>{me.user.name}</span>}
               {iconButton('Keyboard shortcuts', () => setHelp(true), <Keyboard />)}
               {iconButton(theme === 'dark' ? 'Use light theme' : 'Use dark theme', toggleTheme, theme === 'dark' ? <Sun /> : <Moon />)}
-              {iconButton('Sign out', signOut, <LogOut />)}
             </div>
           }
         />

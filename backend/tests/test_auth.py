@@ -42,3 +42,22 @@ async def test_dev_login_rejects_blank_sub(make_client):
     c = await make_client()
     r = await c.post("/api/auth/dev-login", json={"sub": "", "name": "x", "email": "", "groups": []})
     assert r.status_code == 422
+
+
+async def test_default_user_from_env_when_no_session(settings, db):
+    settings.dev_user_sub = "asha@corp.test"
+    settings.dev_user_name = "Asha Rao"
+    settings.dev_user_groups = "grp-a, grp-b"
+    app = create_app(settings)
+    async with app.router.lifespan_context(app):
+        c = httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://t")
+        me = (await c.get("/api/auth/me")).json()["user"]
+        assert (me["sub"], me["name"]) == ("asha@corp.test", "Asha Rao")
+        assert (await db.users.find_one({"_id": "asha@corp.test"}))["groups"] == ["grp-a", "grp-b"]
+
+
+async def test_session_user_wins_over_default(settings, make_client, app):
+    app.state.settings.dev_user_sub = "asha@corp.test"
+    c = await make_client()
+    await login(c, "dev", [])
+    assert (await c.get("/api/auth/me")).json()["user"]["sub"] == "dev"

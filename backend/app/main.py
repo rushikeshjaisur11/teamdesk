@@ -15,6 +15,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         await ensure_indexes(app.state.db)
+        if user := auth.default_user(settings):
+            await auth.remember_user(app.state.db, user)
         yield
         await app.state.mongo.close()
 

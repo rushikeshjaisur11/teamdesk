@@ -20,20 +20,34 @@ def is_platform_owner(user: User, settings: Settings) -> bool:
     return settings.platform_owner_group in user.groups
 
 
+def default_user(settings: Settings) -> User | None:
+    if not settings.dev_user_sub:
+        return None
+    return User(sub=settings.dev_user_sub, name=settings.dev_user_name or settings.dev_user_sub,
+                email=settings.dev_user_email, groups=[g for g in settings.dev_user_groups.replace(",", " ").split() if g])
+
+
 async def current_user(request: Request) -> User:
     data = request.session.get("user")
-    if not data:
+    if data:
+        return User(**data)
+    user = default_user(request.app.state.settings)
+    if not user:
         raise HTTPException(401, "Please sign in.")
-    return User(**data)
+    return user
+
+
+async def remember_user(db, user: User) -> None:
+    await db.users.update_one(
+        {"_id": user.sub},
+        {"$set": {"name": user.name, "email": user.email, "groups": user.groups, "last_login": now()}},
+        upsert=True)
 
 
 async def sign_in(request: Request, user: User) -> None:
     """The one entry point for every sign-in method (interim form today, company login later)."""
     request.session["user"] = user.model_dump()
-    await request.app.state.db.users.update_one(
-        {"_id": user.sub},
-        {"$set": {"name": user.name, "email": user.email, "groups": user.groups, "last_login": now()}},
-        upsert=True)
+    await remember_user(request.app.state.db, user)
 
 
 router = APIRouter(prefix="/api/auth")

@@ -56,7 +56,7 @@ TeamDesk is one internal web app, shared by many teams, where each team has an i
 - **No multi-document transactions** (designer's call): the server may be standalone, not a replica set. Jira-create idempotency, job claiming and doc version history are built on single-document atomic operations (`find_one_and_update`, unique indexes). Phase 1 starts by checking the real server version (`db.version()`) against the chosen PyMongo release's supported-server range.
 - **AI:** Vertex AI via the standard API key (`google-genai`, `genai.Client(vertexai=True, api_key=...)`). Production will go through an internal auth proxy; the owner will wire that themselves later, so **all AI calls must live in one module** that is easy to edit.
 - **Python driver:** use the **PyMongo Async API** (`AsyncMongoClient`). Motor is deprecated (bug fixes ended May 2026).
-- **Identity:** access and roles come from company **entitlement groups**. **Company sign-in is deferred — the owner will add it later.** Until then the app uses a simple sign-in form (name, email, groups) that creates the same session a real login will; all sign-in goes through one `sign_in(request, user)` function so the real login slots in without touching anything else.
+- **Identity:** access and roles come from company **entitlement groups**. **Company sign-in is deferred — the owner will add it later.** Until then there is **no sign-in screen** (owner's decision): requests without a session act as a default user configured by environment variables (`DEV_USER_SUB`, `DEV_USER_NAME`, `DEV_USER_EMAIL`, `DEV_USER_GROUPS`). The real login will call the existing `sign_in(request, user)` function, and sessions take precedence over the default user.
 - **Jira:** may be Jira Cloud or Jira Data Center — support both. Use REST API v2 (`/rest/api/2/issue`) which works on both; Cloud auth = email + API token (Basic), Data Center auth = Personal Access Token (Bearer).
 - **GitHub:** may be github.com or GitHub Enterprise Server — base URL is configurable.
 
@@ -70,7 +70,7 @@ TeamDesk is one internal web app, shared by many teams, where each team has an i
   - **Viewer:** read-only.
 - **Permissions are a matrix** (role × permission) editable by workspace admins. Permissions at minimum: `task.view`, `task.create`, `task.edit_any`, `task.approve`, `jira.view_all`, `doc.edit`, `doc.manage_folders`, `settings.manage`, `connections.manage`, `roles.manage`. `jira.view_all` (default: Admin and Approver) is the "manager" permission for seeing every Jira ticket (§7.5).
 - **Group → role mapping per workspace:** a workspace admin maps company entitlement groups to roles (e.g. `grp-data-eng-approvers → Approver`). Membership is derived from the user's groups at sign-in — no manual user management. A user may belong to many workspaces with different roles, and switches via a workspace switcher.
-- **Interim sign-in** (until company login is added): a form with name, email and groups, enabled by env var `DEV_LOGIN_ENABLED`. It is not secure and must not be exposed outside the company network.
+- **Interim identity** (until company login is added): the env-configured default user above. There is no sign-in or sign-out in the UI. A `POST /api/auth/dev-login` endpoint remains for automated tests and scripts only, gated by `DEV_LOGIN_ENABLED` (off by default). Neither is secure; do not expose them outside the company network.
 
 ## 7. Features and flows
 

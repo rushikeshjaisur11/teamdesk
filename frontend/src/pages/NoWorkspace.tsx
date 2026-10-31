@@ -10,7 +10,7 @@ export function NoWorkspace({ me }: { me: Me }) {
         title="You're not in a workspace yet"
         body={me.user.is_platform_owner
           ? 'Create a workspace for a team and choose which group administers it.'
-          : 'Ask your manager to add one of your access groups to a TeamDesk workspace, then sign in again.'}
+          : 'Ask your manager to add one of your access groups to a TeamDesk workspace, then reload this page.'}
         action={me.user.is_platform_owner
           ? <Button render={<Link to="/platform/workspaces" />}>Create a workspace</Button>
           : undefined}
