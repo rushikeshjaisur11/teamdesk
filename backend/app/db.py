@@ -23,6 +23,8 @@ async def ensure_indexes(db: AsyncDatabase) -> None:
     await db.personal_items.create_index([("owner_sub", ASCENDING), ("today_on", ASCENDING)])
     await db.personal_items.create_index([("title", TEXT), ("search_text", TEXT)])
     await db.personal_notes.create_index([("owner_sub", ASCENDING), ("workspace_id", ASCENDING), ("task_id", ASCENDING)], unique=True)
+    await db.personal_items.create_index([("remind_at", ASCENDING)], partialFilterExpression={"fired_at": None, "remind_at": {"$type": "date"}})
+    await db.personal_notifications.create_index([("owner_sub", ASCENDING), ("read", ASCENDING), ("created_at", DESCENDING)])
     await db.activity.create_index([("workspace_id", ASCENDING), ("task_id", ASCENDING), ("at", ASCENDING)])
     await db.audit.create_index([("workspace_id", ASCENDING), ("at", DESCENDING)])
     await db.notifications.create_index([("workspace_id", ASCENDING), ("user_sub", ASCENDING), ("read", ASCENDING)])

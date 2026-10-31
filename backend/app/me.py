@@ -1,6 +1,6 @@
 """My space: one person's private items, profile and notes. Everything here goes through Personal(owner = caller)."""
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -66,6 +66,7 @@ class ItemFields(BaseModel):
 
     recurrence: Recurrence | None = None
     waiting: Waiting | None = None
+    remind_at: datetime | None = None
 
 
 class NewItem(ItemFields):
@@ -103,6 +104,7 @@ class Me:
     user: User
     items: ScopedCollection
     notes: ScopedCollection
+    notifs: ScopedCollection
     db: object
     settings: Settings
     tz: str
@@ -116,13 +118,14 @@ async def personal(request: Request, user: User = Depends(current_user)) -> Me:
     db = request.app.state.db
     doc = await db.users.find_one({"_id": user.sub}) or {}
     p = Personal(db, user.sub)
-    return Me(user, p.col("personal_items"), p.col("personal_notes"), db, request.app.state.settings,
+    return Me(user, p.col("personal_items"), p.col("personal_notes"), p.col("personal_notifications"), db, request.app.state.settings,
               doc.get("tz", "UTC"), doc.get("use_ai", True))
 
 
 def item_view(doc: dict) -> dict:
     d = out(doc)
-    d.pop("search_text", None)
+    for k in ("search_text", "fired_at", "nudge_fired_at", "next_id"):
+        d.pop(k, None)
     return d
 
 
@@ -181,7 +184,8 @@ async def create_item(body: NewItem, me: Me = Depends(personal)):
     t = now()
     doc = {"notes": "", "labels": [], "checklist": [], **{k: v for k, v in fields.items() if v is not None},
            "status": "open", "today_on": None, "promoted_to": None, "done_at": None, "updated_at": t}
-    for key in ("due_on", "recurrence", "waiting", "link"):
+    doc.update(fired_at=None, nudge_fired_at=None)
+    for key in ("due_on", "recurrence", "waiting", "link", "remind_at"):
         doc.setdefault(key, None)
     doc["search_text"] = search_text(doc)
     return item_view(await me.items.insert(doc))
@@ -200,6 +204,10 @@ async def patch_item(item_id: str, body: ItemPatch, me: Me = Depends(personal)):
     changes = stored(body.model_dump(exclude_unset=True), me)
     if changes.get("kind") == "task" and item["kind"] == "waiting":
         changes["waiting"] = None
+    if "remind_at" in changes:
+        changes["fired_at"] = None
+    if "waiting" in changes or changes.get("kind") == "task":
+        changes["nudge_fired_at"] = None
     merged = {**item, **changes}
     if merged.get("recurrence") and merged["kind"] != "task":
         raise HTTPException(422, "Only tasks can repeat.")
@@ -303,6 +311,26 @@ async def today_view(me: Me = Depends(personal)):
             "rollover": [item_view(i) for i in rollover], "pinned": [item_view(i) for i in pinned],
             "due": [item_view(i) for i in due], "followups": [item_view(i) for i in followups],
             "sent_back": sent_back, "approvals": approvals}
+
+
+@router.get("/notifications")
+async def list_notifications(unread: bool = False, limit: int = Query(50, ge=1, le=200), me: Me = Depends(personal)):
+    f = {"read": False} if unread else {}
+    return [out(n) for n in await me.notifs.find(f, sort=[("created_at", -1), ("_id", -1)], limit=limit)]
+
+
+class MarkRead(BaseModel):
+    ids: list[str] = []
+    all: bool = False
+
+
+@router.post("/notifications/read", status_code=204)
+async def mark_notifications_read(body: MarkRead, me: Me = Depends(personal)):
+    f: dict = {"read": False}
+    if not body.all:
+        f["_id"] = {"$in": body.ids}
+    await me.notifs.update_many(f, {"$set": {"read": True}})
+    return Response(status_code=204)
 
 
 class NoteBody(BaseModel):
