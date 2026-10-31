@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from app.access import Ctx, require
 from app.audit import record
 from app.db import now
+from app.me import mark_promoted
 from app.notifications import approver_subs, notify
 from app.rules import find_matching_rule
 from app.scoped import out
@@ -23,7 +24,7 @@ class NewTask(BaseModel):
     fields: dict[str, FieldText] = {}
     labels: list[Label] | None = Field(None, max_length=20)
     submit: bool = False
-    from_idea_id: str | None = None
+    from_item_id: str | None = None
 
 
 class TaskPatch(BaseModel):
@@ -112,9 +113,8 @@ async def create_task(body: NewTask, ctx: Ctx = Depends(require("task.create")))
         "decision": None, "duplicate_of": None, "snoozed_until": None, "jira_key": None,
         "search_text": search_text(body.fields, labels), "created_at": t, "updated_at": t, "submitted_at": None})
     await log_activity(ctx, task["_id"], "created")
-    if body.from_idea_id:
-        await ctx.scoped.col("ideas").update({"_id": body.from_idea_id, "owner_sub": ctx.user.sub},
-                                             {"$set": {"promoted_task_id": task["_id"]}})
+    if body.from_item_id:
+        await mark_promoted(ctx.scoped.db, ctx.user.sub, body.from_item_id, ctx.scoped.workspace_id, task["_id"])
     if body.submit:
         task = await submit_task(ctx, task)
     return view(task)
