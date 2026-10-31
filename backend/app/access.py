@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from fastapi import Depends, HTTPException, Request
 
 from app.auth import User, current_user
-from app.db import new_id, now
 from app.scoped import Scoped
 
 PERMISSIONS = (
@@ -53,10 +52,3 @@ def require(perm: str):
             raise HTTPException(403, "You don't have permission to do this. Ask a workspace admin.")
         return ctx
     return dep
-
-
-async def create_workspace(db, name: str, slug: str, admin_group: str) -> dict:
-    ws = {"_id": new_id(), "name": name, "slug": slug, "archived": False, "roles": DEFAULT_ROLES,
-          "group_mappings": [{"group": admin_group, "role": "admin"}], "created_at": now()}
-    await db.workspaces.insert_one(ws)
-    return ws
