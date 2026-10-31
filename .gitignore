@@ -7,3 +7,4 @@ dist/
 .env
 *.log
 deploy/openshift/secret.yaml
+.taste-skill/

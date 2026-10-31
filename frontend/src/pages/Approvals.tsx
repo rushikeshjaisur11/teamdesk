@@ -3,7 +3,7 @@ import { AlarmClock, Check, Copy, CornerUpLeft, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { PageHeader } from '@/components/AppShell'
+import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { SplitView } from '@/components/SplitView'
 import { Button } from '@/components/ui/button'
@@ -125,9 +125,10 @@ export function Approvals() {
 
   const list = (
     <>
-      <PageHeader title="Approvals">
+      <PageHeader title="Approvals" finding={queue.data && (items.length
+        ? `${items.length} waiting. The oldest is #${items[0].number} from ${items[0].author.name}, submitted ${items[0].submitted_at ? ago(items[0].submitted_at) : ''}.`
+        : 'Nothing is waiting.')}>
         {!!checked.length && <Button onClick={bulk}><Check />Approve {checked.length} selected</Button>}
-        <span className="text-muted-foreground"><span className="num">{items.length}</span> waiting, oldest first</span>
       </PageHeader>
       {queue.isPending ? (
         <div className="space-y-3 px-6">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
@@ -139,27 +140,39 @@ export function Approvals() {
           action={<Button variant="outline" render={<Link to={`/w/${wid}/tasks`} />}>Go to tasks</Button>} />
       ) : (
         <>
-          <div role="listbox" aria-label="Waiting for approval" className="border-y">
+          <div role="listbox" aria-label="Waiting for approval" className="mx-4 mb-6 overflow-hidden rounded-lg border bg-card">
             {items.map((t) => (
               <div
                 key={t.id} role="option" aria-selected={t.id === current?.id} onClick={() => setSelectedId(t.id)}
-                className={cn('relative flex cursor-pointer items-center gap-3 px-6 py-3 transition-colors duration-(--motion) hover:bg-accent/60',
+                className={cn('relative flex min-h-18 cursor-pointer items-start gap-3 border-t border-rule px-4 py-3 first:border-t-0 transition-colors duration-(--motion) hover:bg-accent/40',
                   t.id === current?.id && 'bg-accent', stamp?.id === t.id && 'opacity-70')}
               >
-                <Checkbox aria-label={`Select #${t.number}`} checked={checked.includes(t.id)} onClick={(e) => e.stopPropagation()}
+                <Checkbox className="mt-0.5" aria-label={`Select #${t.number}`} checked={checked.includes(t.id)} onClick={(e) => e.stopPropagation()}
                   onCheckedChange={(on) => setChecked(on ? [...checked, t.id] : checked.filter((x) => x !== t.id))} />
-                <span className="num w-10 shrink-0 text-muted-foreground">#{t.number}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{t.title}</p>
-                  <p className="flex gap-3 text-xs text-muted-foreground">
-                    <span>{t.author.name}</span><span>Submitted {t.submitted_at ? ago(t.submitted_at) : ''}</span>
+                  <p className="flex items-baseline gap-3">
+                    <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
+                    <span className="num shrink-0 text-xs text-muted-foreground">{t.submitted_at ? ago(t.submitted_at) : ''}</span>
+                  </p>
+                  <p className="mt-0.5 flex gap-3 text-[0.8125rem] text-muted-foreground">
+                    <span className="task-id">#{t.number}</span><span className="truncate">{t.author.name}</span>
                   </p>
                 </div>
                 {stamp?.id === t.id && <span className="stamp absolute right-6 text-base" style={{ color: stamp.color }}>{stamp.label}</span>}
               </div>
             ))}
           </div>
-          <div className="flex flex-wrap gap-2 px-6 py-4">
+          <p className="px-6 pb-6 text-xs text-muted-foreground">J and K move between tasks. A, R, C and D decide.</p>
+        </>
+      )}
+    </>
+  )
+
+  return (
+    <>
+      <SplitView variant="inbox" list={list} pane={current && templates.data && (
+        <>
+          <div className="sticky top-0 z-20 flex flex-wrap gap-2 border-b bg-card px-6 py-3">
             <Button onClick={() => approve(current)}><Check />Approve <kbd className="ml-1 text-xs opacity-70">A</kbd></Button>
             <Button variant="outline" onClick={() => current && setAsking({ action: 'reject', task: current })}><X />Reject <kbd className="ml-1 text-xs opacity-70">R</kbd></Button>
             <Button variant="outline" onClick={() => current && setAsking({ action: 'request_changes', task: current })}><CornerUpLeft />Ask for changes <kbd className="ml-1 text-xs opacity-70">C</kbd></Button>
@@ -172,16 +185,8 @@ export function Approvals() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <p className="px-6 pb-6 text-xs text-muted-foreground">J and K move between tasks.</p>
+          <TaskDetailPane key={current.id} wid={wid} taskId={current.id} templates={templates.data} readOnly />
         </>
-      )}
-    </>
-  )
-
-  return (
-    <>
-      <SplitView list={list} pane={current && templates.data && (
-        <TaskDetailPane key={current.id} wid={wid} taskId={current.id} templates={templates.data} readOnly />
       )} />
       <Dialog open={!!asking} onOpenChange={(o) => { if (!o) { setAsking(null); setReason(''); setDupQuery('') } }}>
         {asking && (

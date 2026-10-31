@@ -2,6 +2,7 @@ import { Inbox, Keyboard, ListTodo, Moon, Settings, Stamp, Sun } from 'lucide-re
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
+import { BrandMark } from '@/components/BrandMark'
 import { CommandPalette } from '@/components/CommandPalette'
 import { NotificationBell } from '@/components/NotificationBell'
 import { QuickCapture } from '@/components/QuickCapture'
@@ -50,9 +51,12 @@ export function WorkspaceLayout() {
           compact={compact}
           items={items}
           header={
-            <div className="flex items-center gap-1">
-              <div className="min-w-0 flex-1"><WorkspaceSwitcher me={me} wid={wid} compact={compact} /></div>
-              {!compact && <NotificationBell wid={wid} />}
+            <div className="flex flex-col gap-3">
+              <div className={compact ? 'flex justify-center' : 'flex items-center justify-between pl-1'}>
+                <BrandMark withName={!compact} />
+                {!compact && <NotificationBell wid={wid} />}
+              </div>
+              <WorkspaceSwitcher me={me} wid={wid} compact={compact} />
             </div>
           }
           footer={

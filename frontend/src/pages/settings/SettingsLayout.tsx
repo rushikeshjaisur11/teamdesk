@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
-import { PageHeader } from '@/components/AppShell'
+import { PageHeader } from '@/components/PageHeader'
 import { useWorkspace } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 import { Audit } from './Audit'
@@ -17,14 +17,14 @@ const PAGES = [
 export function SettingsLayout() {
   const { wid } = useWorkspace()
   return (
-    <div className="mx-auto w-full max-w-5xl">
+    <div className="mx-auto w-full max-w-6xl">
       <PageHeader title="Settings" />
       <div className="flex flex-col gap-6 px-6 pb-10 md:flex-row">
         <nav aria-label="Settings" className="flex shrink-0 gap-1 overflow-x-auto md:w-52 md:flex-col">
           {PAGES.map(([path, label]) => (
             <NavLink key={path} to={`/w/${wid}/settings/${path}`} className={({ isActive }) => cn(
-              'rounded-md px-3 py-1.5 whitespace-nowrap text-muted-foreground hover:bg-accent hover:text-foreground',
-              isActive && 'bg-accent font-medium text-foreground')}>
+              'rounded-md px-3 py-1.5 whitespace-nowrap text-muted-foreground hover:bg-accent/60 hover:text-foreground',
+              isActive && 'bg-accent text-foreground')}>
               {label}
             </NavLink>
           ))}
@@ -48,15 +48,13 @@ export function Section({ title, description, children, actions }: {
   title: string; description?: ReactNode; children: ReactNode; actions?: ReactNode
 }) {
   return (
-    <section className="mb-8 rounded-lg border bg-card">
-      <header className="flex flex-wrap items-start gap-3 border-b px-5 py-4">
-        <div className="min-w-0 flex-1">
-          <h2 className="font-semibold">{title}</h2>
-          {description && <p className="mt-0.5 text-muted-foreground">{description}</p>}
-        </div>
-        {actions}
-      </header>
-      <div className="px-5 py-4">{children}</div>
+    <section className="grid gap-4 border-t py-8 first:border-t-0 first:pt-0 xl:grid-cols-[15rem_1fr] xl:gap-8">
+      <div>
+        <h2 className="font-medium">{title}</h2>
+        {description && <p className="mt-1 text-muted-foreground">{description}</p>}
+        {actions && <div className="mt-3">{actions}</div>}
+      </div>
+      <div className="min-w-0 rounded-2xl bg-card p-4">{children}</div>
     </section>
   )
 }

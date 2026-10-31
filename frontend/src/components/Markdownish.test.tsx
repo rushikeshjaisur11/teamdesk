@@ -9,9 +9,9 @@ it('renders hostile text as text', () => {
 })
 
 it('renders bullets, code and safe links only', () => {
-  const { container } = render(<Markdownish text={'- one `x`\n- see https://example.com/a\n- javascript:alert(1)'} />)
+  const { container } = render(<Markdownish text={'- one `x`\n- see https://docs.corp.test/runbooks/loader\n- javascript:alert(1)'} />)
   expect(container.querySelectorAll('li')).toHaveLength(3)
   expect(screen.getByText('x').tagName).toBe('CODE')
-  expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.com/a')
+  expect(screen.getByRole('link')).toHaveAttribute('href', 'https://docs.corp.test/runbooks/loader')
   expect(container.querySelectorAll('a')).toHaveLength(1)
 })

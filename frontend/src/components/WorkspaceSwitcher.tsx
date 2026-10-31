@@ -18,13 +18,10 @@ export function WorkspaceSwitcher({ me, wid, compact }: { me: Me; wid: string; c
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Switch workspace"
-        className="flex w-full min-w-0 items-center gap-2 rounded-md p-2 text-left hover:bg-accent"
+        className="flex h-9 w-full min-w-0 items-center gap-2 rounded-md border border-input bg-card px-2.5 text-left hover:bg-accent/60"
       >
-        <span className="grid size-7 shrink-0 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-          {monogram(current?.name ?? '?')}
-        </span>
-        {!compact && <>
-          <span className="flex-1 truncate font-semibold">{current?.name}</span>
+        {compact ? <span className="w-full text-center text-xs font-semibold">{monogram(current?.name ?? '?')}</span> : <>
+          <span className="flex-1 truncate">{current?.name}</span>
           <ChevronsUpDown className="size-4 text-muted-foreground" />
         </>}
       </DropdownMenuTrigger>

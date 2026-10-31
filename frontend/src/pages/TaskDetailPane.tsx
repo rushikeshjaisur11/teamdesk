@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Send, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { TaskProgress } from '@/components/TaskProgress'
 import { Markdownish } from '@/components/Markdownish'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
@@ -69,21 +70,20 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
     <div className="flex flex-col">
       <header className="sticky top-0 z-10 flex items-start gap-3 border-b bg-card px-6 py-4">
         <div className="min-w-0 flex-1">
-          <p className="mb-1 flex gap-2 text-muted-foreground"><span className="num">#{t.number}</span><span>{template?.name ?? t.type_key}</span></p>
+          <p className="mb-1 flex gap-2 text-muted-foreground"><span className="task-id">#{t.number}</span><span>{template?.name ?? t.type_key}</span></p>
           <h2 className="text-lg leading-snug font-semibold break-words">{t.title}</h2>
         </div>
         {onClose && <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close details"><X /></Button>}
       </header>
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-6 py-4 text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 pt-4 text-muted-foreground">
         <StatusBadge status={t.status} />
-        <span>{t.author.name}</span>
         <span title={new Date(t.updated_at).toLocaleString()}>Updated {ago(t.updated_at)}</span>
-        {t.jira_key && <span className="font-medium text-foreground">{t.jira_key}</span>}
       </div>
+      <TaskProgress task={t} />
 
       {t.decision?.reason && (
-        <div className="mx-6 mb-4 rounded-md border-l-4 bg-muted px-4 py-3" style={{ borderColor: 'var(--st-changes)' }}>
+        <div className="mx-6 mb-4 rounded-md px-4 py-3" style={{ backgroundColor: 'var(--pill-warning-bg)', color: 'var(--pill-warning-ink)' }}>
           <p className="font-medium">{t.decision.by.name} {DECISION_WORDS[t.decision.action]}</p>
           <p className="mt-1 whitespace-pre-line">{t.decision.reason}</p>
         </div>
@@ -107,7 +107,7 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
         ))}
         {!!t.labels.length && (
           <div className="flex flex-wrap gap-1.5">
-            {t.labels.map((l) => <span key={l} className="rounded-sm border px-1.5 text-xs text-muted-foreground">{l}</span>)}
+            {t.labels.map((l) => <span key={l} className="rounded-sm bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{l}</span>)}
           </div>
         )}
       </div>

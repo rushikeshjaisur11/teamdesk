@@ -13,25 +13,24 @@ export function Sidebar({ compact, header, items, footer }: {
   footer?: ReactNode
 }) {
   return (
-    <nav aria-label="Main" className="flex h-full w-full flex-col gap-1 p-2">
-      <div className="mb-2">{header}</div>
+    <nav aria-label="Main" className="flex h-full w-full flex-col gap-0.5 px-3 py-4">
+      <div className="mb-4">{header}</div>
       {items.map((item) => {
         const link = (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) => cn(
-              'flex h-9 items-center gap-3 rounded-md px-2.5 text-muted-foreground transition-colors duration-(--motion) hover:bg-accent hover:text-foreground',
-              isActive && 'bg-accent font-medium text-foreground',
+              'flex h-8 items-center gap-2.5 rounded-md px-2.5 text-muted-foreground transition-colors duration-(--motion) hover:bg-accent/60 hover:text-foreground',
+              isActive && 'bg-accent text-foreground',
               compact && 'justify-center px-0',
             )}
           >
-            <item.icon className="size-4.5 shrink-0" aria-hidden />
+            <item.icon className="size-4 shrink-0" strokeWidth={1.5} aria-hidden />
             {compact ? <span className="sr-only">{item.label}</span> : <span className="flex-1 truncate">{item.label}</span>}
             {!!item.count && (
               <span
-                className={cn('num rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground',
-                  compact && 'absolute ml-6 -mt-5')}
+                className={cn('num text-xs font-medium text-foreground', compact && 'absolute ml-7 -mt-5')}
                 aria-label={`${item.count} waiting`}
               >
                 {item.count}

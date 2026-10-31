@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { PageHeader } from '@/components/AppShell'
+import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -32,8 +32,7 @@ export function Inbox() {
 
   return (
     <div className="mx-auto w-full max-w-3xl">
-      <PageHeader title="Inbox" />
-      <p className="-mt-2 px-6 pb-4 text-muted-foreground">Only you can see these. Turn one into a task when it's ready.</p>
+      <PageHeader title="Inbox" finding={ideas.data && `${visible.length} ${visible.length === 1 ? 'idea' : 'ideas'}, only visible to you. Turn one into a task when it's ready.`} />
       {ideas.isPending ? (
         <div className="space-y-3 px-6">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
       ) : ideas.isError ? (
@@ -42,9 +41,9 @@ export function Inbox() {
         <EmptyState title="Your inbox is empty"
           body={<>Press <kbd className="rounded border bg-muted px-1.5 text-xs font-medium">I</kbd> anywhere to capture an idea in a second. It lands here.</>} />
       ) : (
-        <ul className="divide-y border-y">
+        <ul className="mx-6 mb-8 divide-y divide-rule overflow-hidden rounded-lg border bg-card">
           {visible.map((idea) => (
-            <li key={idea.id} className="group flex items-start gap-4 px-6 py-3">
+            <li key={idea.id} className="group flex items-start gap-4 px-5 py-3">
               <div className="min-w-0 flex-1">
                 <p className="break-words whitespace-pre-line">{idea.text}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{ago(idea.created_at)}</p>

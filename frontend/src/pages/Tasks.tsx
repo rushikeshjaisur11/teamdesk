@@ -2,10 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, Plus, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { PageHeader } from '@/components/AppShell'
+import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { SplitView } from '@/components/SplitView'
-import { StatusBadge, STATUS_LABELS, statusColor } from '@/components/StatusBadge'
+import { StatusBadge, STATUS_LABELS } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger,
@@ -23,6 +23,20 @@ import { TaskDetailPane } from './TaskDetailPane'
 import { TaskForm } from './TaskForm'
 
 const ORDER: TaskStatus[] = ['pending_approval', 'changes_requested', 'draft', 'approved', 'in_jira', 'jira_failed', 'in_progress', 'snoozed', 'done', 'rejected', 'duplicate']
+
+/** The line under the title: what in this view needs someone's attention. */
+export function tasksFinding(tasks: Task[]) {
+  const waiting = tasks.filter((t) => t.status === 'pending_approval')
+  const sentBack = tasks.filter((t) => t.status === 'changes_requested').length
+  const oldest = waiting.map((t) => t.submitted_at).filter(Boolean).sort()[0]
+  const parts = [
+    waiting.length
+      ? `${waiting.length} waiting for approval${oldest ? `, the oldest submitted ${ago(oldest)}` : ''}.`
+      : 'Nothing is waiting for approval.',
+  ]
+  if (sentBack) parts.push(`${sentBack} sent back for changes.`)
+  return parts.join(' ')
+}
 
 export function Tasks() {
   const { wid, can } = useWorkspace()
@@ -58,24 +72,22 @@ export function Tasks() {
   const typeName = (key: string) => templates.data?.find((t) => t.key === key)?.name ?? key
   const open = (id: string) => navigate(`/w/${wid}/tasks/${id}`)
   const closeIdea = () => { params.delete('fromIdea'); params.delete('title'); params.delete('new'); setParams(params, { replace: true }) }
+  const filterButton = (active: boolean) => <Button variant={active ? 'secondary' : 'outline'} />
 
   const list = (
     <>
-      <PageHeader title="Tasks">
-        {can('task.create') && (
-          <Button onClick={() => setCreating(true)}>
-            <Plus />New task<kbd className="ml-1 rounded border border-primary-foreground/30 px-1 text-xs">N</kbd>
-          </Button>
-        )}
+      <PageHeader title="Tasks" finding={tasks.data && tasksFinding(tasks.data)}>
+        {can('task.create') && <Button onClick={() => setCreating(true)}><Plus />New task</Button>}
       </PageHeader>
-      <div className="flex flex-wrap items-center gap-2 px-6 pb-3">
+
+      <div className="flex flex-wrap items-center gap-2 px-6 pb-4">
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks" aria-label="Search tasks" className="pl-8" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks" aria-label="Search tasks" className="bg-card pl-8" />
         </div>
-        <Button variant={mine ? 'secondary' : 'ghost'} aria-pressed={mine} onClick={() => setMine(!mine)}>Mine</Button>
+        <Button variant={mine ? 'secondary' : 'outline'} aria-pressed={mine} onClick={() => setMine(!mine)}>Mine</Button>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant={statuses.length ? 'secondary' : 'ghost'} />}>
+          <DropdownMenuTrigger render={filterButton(!!statuses.length)}>
             Status{statuses.length ? ` (${statuses.length})` : ''}<ChevronDown />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -88,9 +100,7 @@ export function Tasks() {
           </DropdownMenuContent>
         </DropdownMenu>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant={type ? 'secondary' : 'ghost'} />}>
-            {type ? typeName(type) : 'Type'}<ChevronDown />
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger render={filterButton(!!type)}>{type ? typeName(type) : 'Type'}<ChevronDown /></DropdownMenuTrigger>
           <DropdownMenuContent>
             {templates.data?.map((t) => (
               <DropdownMenuCheckboxItem key={t.key} checked={type === t.key} onCheckedChange={(on) => setType(on ? t.key : '')}>
@@ -99,52 +109,63 @@ export function Tasks() {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button variant="ghost" className="ml-auto" aria-pressed={grouped} onClick={() => setGrouped(!grouped)}>
+        <Button variant="ghost" className="ml-auto text-muted-foreground" aria-pressed={grouped} onClick={() => setGrouped(!grouped)}>
           {grouped ? 'Grouped by status' : 'Not grouped'}
         </Button>
       </div>
 
-      {tasks.isPending ? (
-        <div className="space-y-3 px-6 py-2" aria-label="Loading tasks">
-          {Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-8 w-full" />)}
-        </div>
-      ) : tasks.isError ? (
-        <p role="alert" className="px-6 text-destructive">{tasks.error.message}</p>
-      ) : !tasks.data.length ? (
-        filtering ? (
-          <EmptyState title="No tasks match these filters" body="Try fewer filters or a different search."
-            action={<Button variant="outline" onClick={() => { setQ(''); setMine(false); setStatuses([]); setType('') }}>Clear filters</Button>} />
+      <div className="mx-6 mb-8 overflow-hidden rounded-lg border bg-card">
+        {tasks.isPending ? (
+          <div className="space-y-4 p-5" aria-label="Loading tasks">
+            {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-5 w-full" />)}
+          </div>
+        ) : tasks.isError ? (
+          <p role="alert" className="p-5 text-destructive">{tasks.error.message} <Button variant="link" onClick={() => tasks.refetch()}>Retry</Button></p>
+        ) : !tasks.data.length ? (
+          filtering ? (
+            <EmptyState title="No tasks match these filters" body="Try fewer filters or a different search."
+              action={<Button variant="outline" onClick={() => { setQ(''); setMine(false); setStatuses([]); setType('') }}>Clear filters</Button>} />
+          ) : (
+            <EmptyState title="No tasks yet" body="Tasks your team adds show up here, grouped by where they are."
+              action={can('task.create') ? <Button onClick={() => setCreating(true)}><Plus />New task</Button> : undefined} />
+          )
         ) : (
-          <EmptyState title="No tasks yet" body="Tasks your team adds show up here, grouped by where they are in the flow."
-            action={can('task.create') ? <Button onClick={() => setCreating(true)}><Plus />New task</Button> : undefined} />
-        )
-      ) : (
-        <div className={cn('pb-10', tasks.isPlaceholderData && 'opacity-60')}>
-          {groups.map(([status, ts]) => (
-            <section key={status ?? 'all'} aria-label={status ? STATUS_LABELS[status] : 'Tasks'}>
-              {status && (
-                <h2 className="sticky top-0 z-10 flex items-center gap-2 border-y bg-background/95 px-6 py-1.5 text-xs font-semibold backdrop-blur">
-                  <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: statusColor(status) }} />
-                  {STATUS_LABELS[status]} <span className="num font-normal text-muted-foreground">{ts.length}</span>
-                </h2>
-              )}
-              {ts.map((t) => (
-                <button key={t.id} onClick={() => open(t.id)} aria-current={t.id === taskId || undefined}
-                  className={cn('flex w-full items-center gap-3 px-6 py-2.5 text-left transition-colors duration-(--motion) hover:bg-accent/60',
-                    t.id === taskId && 'bg-accent')}>
-                  <span className="num w-10 shrink-0 text-muted-foreground">#{t.number}</span>
-                  <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
-                  <span className="hidden text-muted-foreground @4xl:inline">{typeName(t.type_key)}</span>
-                  {t.labels.slice(0, 2).map((l) => <span key={l} className="hidden rounded-sm border px-1.5 text-xs text-muted-foreground @3xl:inline">{l}</span>)}
-                  <StatusBadge status={t.status} />
-                  <span className="hidden w-28 shrink-0 truncate text-muted-foreground @2xl:inline">{t.author.name}</span>
-                  <span className="hidden w-24 shrink-0 text-right text-xs text-muted-foreground @xl:inline">{ago(t.updated_at)}</span>
-                </button>
-              ))}
-            </section>
-          ))}
-        </div>
-      )}
+          <div className={cn(tasks.isPlaceholderData && 'opacity-60')}>
+            <div className="flex items-center gap-3 border-b px-5 py-2.5 text-xs text-muted-foreground" aria-hidden>
+              <span className="w-12 shrink-0">ID</span>
+              <span className="flex-1">Title</span>
+              <span className="hidden w-24 shrink-0 @4xl:inline">Type</span>
+              <span className="w-36 shrink-0">Status</span>
+              <span className="hidden w-32 shrink-0 @2xl:inline">Author</span>
+              <span className="hidden w-24 shrink-0 text-right @xl:inline">Updated</span>
+            </div>
+            {groups.map(([status, ts]) => (
+              <section key={status ?? 'all'} aria-label={status ? STATUS_LABELS[status] : 'Tasks'}>
+                {status && (
+                  <h2 className="flex items-baseline gap-2 px-5 pt-4 pb-1.5 text-xs font-medium text-muted-foreground">
+                    {STATUS_LABELS[status]}<span className="num">{ts.length}</span>
+                  </h2>
+                )}
+                {ts.map((t) => (
+                  <button key={t.id} onClick={() => open(t.id)} aria-current={t.id === taskId || undefined}
+                    className={cn('flex h-11 w-full items-center gap-3 border-t border-rule px-5 text-left transition-colors duration-(--motion) hover:bg-accent/40',
+                      t.id === taskId && 'bg-accent')}>
+                    <span className="task-id w-12 shrink-0 text-muted-foreground">#{t.number}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-medium">{t.title}</span>
+                      {t.labels.slice(0, 2).map((l) => <span key={l} className="ml-2 hidden text-xs text-muted-foreground @3xl:inline">{l}</span>)}
+                    </span>
+                    <span className="hidden w-24 shrink-0 truncate text-muted-foreground @4xl:inline">{typeName(t.type_key)}</span>
+                    <span className="w-36 shrink-0"><StatusBadge status={t.status} /></span>
+                    <span className="hidden w-32 shrink-0 truncate text-muted-foreground @2xl:inline">{t.author.name}</span>
+                    <span className="num hidden w-24 shrink-0 text-right text-xs text-muted-foreground @xl:inline">{ago(t.updated_at)}</span>
+                  </button>
+                ))}
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   )
 

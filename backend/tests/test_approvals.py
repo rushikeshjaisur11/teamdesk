@@ -137,3 +137,13 @@ async def test_new_workspace_lets_developer_tasks_skip_the_queue(make_client):
     t = (await d.post(f"/api/w/{wid}/tasks", json={**STORY, "submit": True})).json()
     assert t["status"] == "approved"
     assert t["decision"]["by"] == {"sub": "rule", "name": "Developer tasks skip the queue"}
+
+
+async def test_new_workspace_lets_tech_tasks_skip_the_queue(make_client):
+    wid = await make_workspace(make_client)
+    a = await make_client(); await login(a, "adm", ["g-admin"])
+    await a.put(f"/api/w/{wid}/group-mappings", json=[{"group": "g-admin", "role": "admin"}, {"group": "g-appr", "role": "approver"}])
+    p = await make_client(); await login(p, "appr", ["g-appr"])
+    t = (await p.post(f"/api/w/{wid}/tasks", json=TECH_DEBT)).json()
+    assert t["status"] == "approved"
+    assert t["decision"]["by"] == {"sub": "rule", "name": "Tech tasks skip the queue"}

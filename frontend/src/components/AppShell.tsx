@@ -2,7 +2,7 @@ import { Menu } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { APP_NAME } from '@/lib/brand'
+import { BrandMark } from './BrandMark'
 
 /**
  * Sidebar + main. >=1024px: full sidebar. 768–1023px: icon rail. <768px: sidebar in a drawer.
@@ -15,8 +15,8 @@ export function AppShell({ sidebar, children }: {
   const [drawer, setDrawer] = useState(false)
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
-      <aside className="hidden w-16 shrink-0 border-r bg-card md:flex lg:hidden">{sidebar(true)}</aside>
-      <aside className="hidden w-64 shrink-0 border-r bg-card lg:flex">{sidebar(false)}</aside>
+      <aside className="hidden w-16 shrink-0 md:flex lg:hidden">{sidebar(true)}</aside>
+      <aside className="hidden w-60 shrink-0 lg:flex">{sidebar(false)}</aside>
       <Sheet open={drawer} onOpenChange={setDrawer}>
         <SheetContent side="left" className="w-72 p-0" onClick={() => setDrawer(false)}>
           <SheetTitle className="sr-only">Navigation</SheetTitle>
@@ -24,12 +24,12 @@ export function AppShell({ sidebar, children }: {
         </SheetContent>
       </Sheet>
       <div className="relative flex min-w-0 flex-1">
-        <main className="@container flex min-w-0 flex-1 flex-col overflow-y-auto">
+        <main className="@container flex min-w-0 flex-1 flex-col overflow-y-auto border-l bg-background">
           <div className="flex items-center gap-2 border-b px-4 py-2 md:hidden">
             <Button variant="ghost" size="icon" aria-label="Open navigation" onClick={() => setDrawer(true)}>
               <Menu />
             </Button>
-            <span className="font-semibold">{APP_NAME}</span>
+            <BrandMark />
           </div>
           {children}
         </main>
@@ -38,11 +38,4 @@ export function AppShell({ sidebar, children }: {
   )
 }
 
-export function PageHeader({ title, children }: { title: string; children?: ReactNode }) {
-  return (
-    <header className="flex flex-wrap items-center gap-3 px-6 pt-6 pb-4">
-      <h1 className="mr-auto text-xl font-semibold tracking-tight">{title}</h1>
-      {children}
-    </header>
-  )
-}
+export { PageHeader } from './PageHeader'

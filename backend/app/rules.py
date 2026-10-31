@@ -6,8 +6,10 @@ from app.audit import record
 from app.scoped import Scoped, out
 from app.task_flow import rule_matches
 
-DEFAULT_RULES = [{"name": "Developer tasks skip the queue", "enabled": True,
-                  "type_keys": [], "author_roles": ["member"], "labels_any": []}]
+DEFAULT_RULES = [
+    {"name": "Developer tasks skip the queue", "enabled": True, "type_keys": [], "author_roles": ["member"], "labels_any": []},
+    {"name": "Tech tasks skip the queue", "enabled": True, "type_keys": ["tech_debt"], "author_roles": [], "labels_any": []},
+]
 
 
 async def seed_rules(scoped: Scoped) -> None:
