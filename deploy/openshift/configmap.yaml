@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: teamdesk-config
+data:
+  MONGO_DB: teamdesk
+  PLATFORM_OWNER_GROUP: teamdesk-platform-owners
+  PUBLIC_URL: https://teamdesk.apps.example.internal
+  HTTPS_ONLY_COOKIES: "true"
+  SMTP_HOST: ""
+  SMTP_PORT: "587"
+  SMTP_FROM: teamdesk@example.internal
+  # Interim identity until company login is connected. Every request acts as this user,
+  # so only set these in a single-user test namespace. Leave DEV_USER_SUB empty elsewhere.
+  DEV_USER_SUB: ""
+  DEV_USER_NAME: ""
+  DEV_USER_EMAIL: ""
+  DEV_USER_GROUPS: ""

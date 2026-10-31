@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teamdesk-web
+  labels: { app: teamdesk-web }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: teamdesk-web }
+  template:
+    metadata:
+      labels: { app: teamdesk-web }
+    spec:
+      containers:
+        - name: web
+          image: image-registry.openshift-image-registry.svc:5000/teamdesk/teamdesk-web:latest
+          ports: [{ containerPort: 8080 }]
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teamdesk-web
+spec:
+  selector: { app: teamdesk-web }
+  ports: [{ port: 8080, targetPort: 8080 }]

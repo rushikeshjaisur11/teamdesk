@@ -6,9 +6,6 @@ import { Workspaces } from '@/pages/platform/Workspaces'
 import { SettingsLayout } from '@/pages/settings/SettingsLayout'
 import { Tasks } from '@/pages/Tasks'
 import { WorkspaceLayout } from '@/pages/WorkspaceLayout'
-import { MockApprovals } from '@/pages/mockup/MockApprovals'
-import { MockDocs } from '@/pages/mockup/MockDocs'
-import { MockTasks } from '@/pages/mockup/MockTasks'
 
 export default function App() {
   return (
@@ -22,9 +19,6 @@ export default function App() {
         <Route path="settings/*" element={<SettingsLayout />} />
       </Route>
       <Route path="/platform/workspaces" element={<Workspaces />} />
-      <Route path="/mockup/tasks" element={<MockTasks />} />
-      <Route path="/mockup/approvals" element={<MockApprovals />} />
-      <Route path="/mockup/docs" element={<MockDocs />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

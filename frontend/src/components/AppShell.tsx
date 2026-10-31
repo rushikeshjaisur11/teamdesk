@@ -5,14 +5,12 @@ import { Button } from '@/components/ui/button'
 import { APP_NAME } from '@/lib/brand'
 
 /**
- * Sidebar + main + optional right-hand detail pane.
- * >=1024px: full sidebar. 768–1023px: icon rail. <768px: sidebar in a drawer.
- * The pane sits beside the list on wide screens and overlays it below 1024px.
+ * Sidebar + main. >=1024px: full sidebar. 768–1023px: icon rail. <768px: sidebar in a drawer.
+ * Pages that need a detail pane use SplitView inside main.
  */
-export function AppShell({ sidebar, children, pane }: {
+export function AppShell({ sidebar, children }: {
   sidebar: (compact: boolean) => ReactNode
   children: ReactNode
-  pane?: ReactNode
 }) {
   const [drawer, setDrawer] = useState(false)
   return (
@@ -35,14 +33,6 @@ export function AppShell({ sidebar, children, pane }: {
           </div>
           {children}
         </main>
-        {pane && (
-          <section
-            aria-label="Details"
-            className="absolute inset-0 z-20 flex flex-col overflow-y-auto border-l bg-card shadow-xl lg:static lg:z-auto lg:w-[30rem] lg:shrink-0 lg:shadow-none animate-in slide-in-from-right-4 fade-in duration-(--motion)"
-          >
-            {pane}
-          </section>
-        )}
       </div>
     </div>
   )
