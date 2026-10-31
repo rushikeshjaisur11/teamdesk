@@ -153,6 +153,7 @@ export function Tasks() {
                     <span className="task-id w-12 shrink-0 text-muted-foreground">#{t.number}</span>
                     <span className="min-w-0 flex-1 truncate">
                       <span className="font-medium">{t.title}</span>
+                      {!!t.checklist?.length && <span className="num ml-2 text-xs text-muted-foreground">{t.checklist.filter((c) => c.done).length}/{t.checklist.length}</span>}
                       {t.labels.slice(0, 2).map((l) => <span key={l} className="ml-2 hidden text-xs text-muted-foreground @3xl:inline">{l}</span>)}
                     </span>
                     <span className="hidden w-24 shrink-0 truncate text-muted-foreground @4xl:inline">{typeName(t.type_key)}</span>

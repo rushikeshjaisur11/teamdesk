@@ -85,3 +85,11 @@ oc apply -f deploy/openshift/configmap.yaml -f deploy/openshift/secret.yaml \
 ```
 
 Both images run as a non-root user and work with OpenShift's arbitrary UIDs. The web image serves the app on port 8080 and proxies `/api` to the `teamdesk-api` service. Don't expose TeamDesk to a shared audience until company login is connected.
+
+## My space
+
+Every person has a private space: **Today**, **Inbox** (captured ideas), **My tasks** (due dates, steps, repeats) and **Waiting on** (things you're chasing). Private notes on team tasks live there too.
+
+Nobody else can read it, workspace admins and platform owners included. The API enforces this: every personal query is filtered by the signed-in person's id inside one data layer (`backend/app/scoped.py`, `Personal`), and no endpoint accepts another person's id. Tests in `backend/tests/test_me_*.py` prove it.
+
+Shortcuts: `I` captures an idea. `G` then `T` opens Today, `G` then `M` My tasks, `G` then `I` Inbox, `G` then `W` Waiting on.

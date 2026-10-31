@@ -3,7 +3,9 @@ import { Pencil, Send, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { TaskProgress } from '@/components/TaskProgress'
+import { Checklist } from '@/components/Checklist'
 import { Markdownish } from '@/components/Markdownish'
+import { PrivateNote } from '@/components/PrivateNote'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -50,6 +52,12 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
     onSuccess: () => { setComment(''); refresh() },
     onError: (e) => toast.error(e.message),
   })
+  const saveChecklist = useMutation({
+    mutationFn: (items: NonNullable<Task['checklist']>) => api<Task>(wpath(wid, `/tasks/${taskId}/checklist`), { method: 'PUT', json: items }),
+    onMutate: (items) => qc.setQueryData<Task>(qk.task(wid, taskId), (t) => t && { ...t, checklist: items }),
+    onSuccess: (t) => refresh(t),
+    onError: (e) => { toast.error(e.message); refresh() },
+  })
   const submit = useMutation({
     mutationFn: () => api<Task>(wpath(wid, `/tasks/${taskId}/submit`), { method: 'POST' }),
     onSuccess: (t) => { refresh(t); toast.success(savedMessage(t)) },
@@ -64,6 +72,7 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
   const t = task.data
   const template = templates.find((x) => x.key === t.type_key)
   const mayEdit = !readOnly && (t.author.sub === me?.user.sub || can('task.edit_any'))
+  const mayEditChecklist = (t.author.sub === me?.user.sub || can('task.edit_any')) && !['rejected', 'duplicate'].includes(t.status)
   const sections = template?.sections ?? Object.keys(t.fields).map((key) => ({ key, label: key, required: false, hint: '' }))
 
   return (
@@ -111,6 +120,15 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
           </div>
         )}
       </div>
+
+      {(!!t.checklist?.length || mayEditChecklist) && (
+        <section className="border-t px-6 py-5">
+          <h3 className="mb-2 font-semibold">Checklist {!!t.checklist?.length && <span className="num font-normal text-muted-foreground">{t.checklist.filter((c) => c.done).length}/{t.checklist.length}</span>}</h3>
+          <Checklist items={t.checklist ?? []} readOnly={!mayEditChecklist} onChange={(items) => saveChecklist.mutate(items)} />
+        </section>
+      )}
+
+      <PrivateNote wid={wid} taskId={taskId} />
 
       <section aria-label="Activity" className="border-t px-6 py-5">
         <h3 className="mb-3 font-semibold">Activity</h3>

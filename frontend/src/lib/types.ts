@@ -15,6 +15,7 @@ export type Task = {
   id: string; number: number; type_key: string; title: string; fields: Record<string, string>; labels: string[]
   status: TaskStatus; author: Person & { email: string }; decision: Decision | null; duplicate_of: string | null
   snoozed_until: string | null; jira_key: string | null; created_at: string; updated_at: string; submitted_at: string | null
+  checklist?: { id: string; text: string; done: boolean }[]
 }
 export type SimilarTask = Pick<Task, 'id' | 'number' | 'title' | 'status'>
 
