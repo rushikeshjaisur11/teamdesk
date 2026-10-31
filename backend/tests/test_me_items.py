@@ -84,3 +84,38 @@ async def test_search_is_owner_only(ws_with_dev):
 async def test_workspace_ideas_route_is_gone(ws_with_dev):
     wid, c = ws_with_dev
     assert (await c["dev"].get(f"/api/w/{wid}/ideas")).status_code == 404
+
+
+async def test_fourth_pin_refused_and_old_pins_dont_count(ws_with_dev, db):
+    wid, c = ws_with_dev
+    ids = [(await c["dev"].post("/api/me/items", json={"kind": "task", "title": f"t{i}"})).json()["id"] for i in range(5)]
+    await db.personal_items.update_one({"_id": ids[4]}, {"$set": {"today_on": "2020-01-01"}})
+    for i in ids[:3]:
+        r = await c["dev"].post(f"/api/me/items/{i}/pin", json={"on": True})
+        assert r.status_code == 200 and r.json()["today_on"]
+    r = await c["dev"].post(f"/api/me/items/{ids[3]}/pin", json={"on": True})
+    assert r.status_code == 409 and "three things" in r.json()["detail"]
+    assert (await c["dev"].post(f"/api/me/items/{ids[0]}/pin", json={"on": False})).json()["today_on"] is None
+    assert (await c["dev"].post(f"/api/me/items/{ids[3]}/pin", json={"on": True})).status_code == 200
+
+
+async def test_completing_recurring_task_once_creates_one_next(ws_with_dev):
+    import asyncio
+    wid, c = ws_with_dev
+    it = (await c["dev"].post("/api/me/items", json={"kind": "task", "title": "Status report", "due_on": "2026-10-30",
+          "recurrence": {"freq": "weekly", "days": [4]}, "checklist": [{"id": "a", "text": "draft", "done": True}]})).json()
+    r1, r2 = await asyncio.gather(c["dev"].post(f"/api/me/items/{it['id']}/complete"),
+                                  c["dev"].post(f"/api/me/items/{it['id']}/complete"))
+    assert sorted([r1.status_code, r2.status_code]) == [200, 409]
+    body = (r1 if r1.status_code == 200 else r2).json()
+    assert body["item"]["status"] == "done"
+    nxt = body["next"]
+    assert nxt["checklist"][0]["done"] is False and nxt["recurrence"] == {"freq": "weekly", "days": [4], "day": None}
+    assert nxt["due_on"] > "2026-10-30" and nxt["today_on"] is None
+    assert [i["id"] for i in (await c["dev"].get("/api/me/items")).json()] == [nxt["id"]]
+
+
+async def test_completing_plain_task_has_no_next(ws_with_dev):
+    wid, c = ws_with_dev
+    it = (await c["dev"].post("/api/me/items", json={"kind": "task", "title": "once"})).json()
+    assert (await c["dev"].post(f"/api/me/items/{it['id']}/complete")).json()["next"] is None

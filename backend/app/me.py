@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, StringConstraints, model_validator
 from app.auth import User, current_user
 from app.config import Settings
 from app.db import now
-from app.my_time import today_for
+from app.my_time import next_due, today_for
 from app.scoped import Personal, ScopedCollection, out
 
 Label = Annotated[str, StringConstraints(pattern=r"^\S{1,50}$")]
@@ -215,3 +215,40 @@ async def mark_promoted(db, owner_sub: str, item_id: str, workspace_id: str, tas
     await Personal(db, owner_sub).col("personal_items").update(
         {"_id": item_id, "status": "open"},
         {"$set": {"promoted_to": {"workspace_id": workspace_id, "task_id": task_id}, "status": "done", "done_at": t, "updated_at": t}})
+
+
+PIN_LIMIT = 3
+
+
+class Pin(BaseModel):
+    on: bool
+
+
+@router.post("/items/{item_id}/pin")
+async def pin_item(item_id: str, body: Pin, me: Me = Depends(personal)):
+    await load_item(me, item_id)
+    today = me.today().isoformat()
+    if body.on and await me.items.count({"status": "open", "today_on": today, "_id": {"$ne": item_id}}) >= PIN_LIMIT:
+        raise HTTPException(409, "You can pin three things for today. Unpin one first.")
+    # ponytail: count-then-set can let two simultaneous pins both land; a fourth pin is harmless, not data loss.
+    return item_view(await me.items.update({"_id": item_id}, {"$set": {"today_on": today if body.on else None, "updated_at": now()}}))
+
+
+@router.post("/items/{item_id}/complete")
+async def complete_item(item_id: str, me: Me = Depends(personal)):
+    await load_item(me, item_id)
+    t = now()
+    done = await me.items.update({"_id": item_id, "status": "open"}, {"$set": {"status": "done", "done_at": t, "updated_at": t}})
+    if not done:
+        raise HTTPException(409, "Already done.")
+    nxt = None
+    if rule := done.get("recurrence"):
+        due = date.fromisoformat(done["due_on"]) if done.get("due_on") else None
+        nxt = await me.items.insert({
+            **{k: done[k] for k in ("kind", "title", "notes", "labels", "recurrence", "waiting", "link")},
+            "checklist": [{**c, "done": False} for c in done["checklist"]],
+            "due_on": next_due(rule, due, me.today()).isoformat(),
+            "status": "open", "today_on": None, "promoted_to": None, "done_at": None, "updated_at": t,
+            "search_text": done.get("search_text", ""),
+        })
+    return {"item": item_view(done), "next": item_view(nxt) if nxt else None}
