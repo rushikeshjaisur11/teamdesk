@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from app.access import Ctx, require
 from app.audit import record
 from app.db import now
+from app.notifications import approver_subs, notify
 from app.rules import find_matching_rule
 from app.scoped import out
 from app.task_flow import EDITABLE, missing_required, next_status, search_text
@@ -76,6 +77,8 @@ async def submit_task(ctx: Ctx, task: dict) -> dict:
         await record(ctx, "rule.fired", task["_id"], {"rule": rule["name"], "number": task["number"]})
     else:
         await log_activity(ctx, task["_id"], "submitted")
+        await notify(ctx, await approver_subs(ctx), "approval_needed", task,
+                     f"#{task['number']} {task['title']} needs approval")
     return task
 
 
@@ -181,5 +184,7 @@ async def activity(task_id: str, ctx: Ctx = Depends(require("task.view"))):
 
 @router.post("/{task_id}/comments", status_code=201)
 async def comment(task_id: str, body: Comment, ctx: Ctx = Depends(require("task.view"))):
-    await load(ctx, task_id)
-    return out(await log_activity(ctx, task_id, "comment", {"text": body.text}))
+    task = await load(ctx, task_id)
+    item = await log_activity(ctx, task_id, "comment", {"text": body.text})
+    await notify(ctx, [task["author"]["sub"]], "comment", task, f"{ctx.user.name} commented on #{task['number']}")
+    return out(item)

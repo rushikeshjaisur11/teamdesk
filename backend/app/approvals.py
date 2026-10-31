@@ -6,6 +6,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 from app.access import Ctx, require
 from app.audit import record
 from app.db import now
+from app.notifications import notify
 from app.task_flow import from_statuses, next_status
 from app.tasks import actor, load, log_activity, view
 
@@ -41,7 +42,17 @@ async def decide(ctx: Ctx, task_id: str, action: str, reason: str | None = None,
         raise HTTPException(409, ALREADY)
     await log_activity(ctx, task_id, "decision", {"action": action, "reason": reason})
     await record(ctx, f"task.{action}", task_id, {"number": task["number"]})
+    text = decision_text(task["number"], action, ctx.user.name, reason)
+    if text:
+        await notify(ctx, [task["author"]["sub"]], "decision", task, text)
     return task
+
+
+def decision_text(number: int, action: str, who: str, reason: str | None) -> str | None:
+    return {"approve": f"#{number} was approved by {who}",
+            "reject": f"#{number} was rejected by {who}: {reason}",
+            "request_changes": f"{who} asked for changes on #{number}: {reason}",
+            "duplicate": f"#{number} was marked as a duplicate by {who}"}.get(action)
 
 
 def queue_filter() -> dict:

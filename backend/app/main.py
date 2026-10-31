@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 from pymongo import AsyncMongoClient
 
-from app import approvals, audit, auth, ideas, rules, tasks, templates, workspaces
+from app import approvals, audit, auth, ideas, notifications, rules, tasks, templates, workspaces
 from app.config import APP_NAME, Settings
 from app.db import ensure_indexes
 
@@ -33,6 +33,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(ideas.router)
     app.include_router(approvals.router)
     app.include_router(rules.router)
+    app.include_router(notifications.router)
 
     @app.get("/api/health")
     async def health(request: Request):

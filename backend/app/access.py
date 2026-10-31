@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import BackgroundTasks, Depends, HTTPException, Request
 
 from app.auth import User, current_user
+from app.config import Settings
 from app.scoped import Scoped
 
 PERMISSIONS = (
@@ -32,18 +33,21 @@ class Ctx:
     roles: list[str]
     perms: set[str]
     scoped: Scoped
+    settings: Settings
+    background: BackgroundTasks
 
     def can(self, perm: str) -> bool:
         return perm in self.perms
 
 
-async def workspace_ctx(workspace_id: str, request: Request, user: User = Depends(current_user)) -> Ctx:
+async def workspace_ctx(workspace_id: str, request: Request, background: BackgroundTasks,
+                        user: User = Depends(current_user)) -> Ctx:
     db = request.app.state.db
     ws = await db.workspaces.find_one({"_id": workspace_id, "archived": False})
     roles, perms = resolve(ws, user.groups) if ws else ([], set())
     if not perms:
         raise HTTPException(404, "Workspace not found.")
-    return Ctx(user, ws, roles, perms, Scoped(db, workspace_id))
+    return Ctx(user, ws, roles, perms, Scoped(db, workspace_id), request.app.state.settings, background)
 
 
 def require(perm: str):

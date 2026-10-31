@@ -41,3 +41,10 @@ async def test_count_and_sorted_find(db):
 
 def test_out_renames_id_and_hides_workspace():
     assert out({"_id": "1", "workspace_id": "w", "t": 1}) == {"id": "1", "t": 1}
+
+
+async def test_update_many_stays_in_workspace(db):
+    a, b = Scoped(db, "wa").col("things"), Scoped(db, "wb").col("things")
+    await a.insert({"read": False}); await b.insert({"read": False})
+    assert await a.update_many({"read": False}, {"$set": {"read": True}}) == 1
+    assert (await b.find({}))[0]["read"] is False

@@ -29,11 +29,19 @@ class ScopedCollection:
     async def find_one(self, filter: dict) -> dict | None:
         return await self._col.find_one(self._f(filter))
 
-    async def update(self, filter: dict, update: dict) -> dict | None:
+    @staticmethod
+    def _check(update: dict) -> None:
         for op in ("$set", "$unset", "$rename"):
             if "workspace_id" in update.get(op, {}):
                 raise ValueError("workspace_id cannot be changed")
+
+    async def update(self, filter: dict, update: dict) -> dict | None:
+        self._check(update)
         return await self._col.find_one_and_update(self._f(filter), update, return_document=ReturnDocument.AFTER)
+
+    async def update_many(self, filter: dict, update: dict) -> int:
+        self._check(update)
+        return (await self._col.update_many(self._f(filter), update)).modified_count
 
     async def count(self, filter: dict) -> int:
         return await self._col.count_documents(self._f(filter))
