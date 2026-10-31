@@ -1,0 +1,27 @@
+[project]
+name = "teamdesk-backend"
+version = "0.1.0"
+description = "TeamDesk API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.162.0",
+    "httpx>=0.28.1",
+    "itsdangerous>=2.2.0",
+    "pydantic-settings>=2.16.2",
+    "pymongo>=4.19.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
