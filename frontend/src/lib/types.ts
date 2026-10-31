@@ -40,3 +40,20 @@ export const PERMISSIONS = [
   'task.view', 'task.create', 'task.edit_any', 'task.approve', 'jira.view_all',
   'doc.edit', 'doc.manage_folders', 'settings.manage', 'connections.manage', 'roles.manage',
 ] as const
+
+export type ChecklistItem = { id: string; text: string; done: boolean }
+export type Recurrence = { freq: 'daily' | 'weekdays' | 'weekly' | 'monthly'; days?: number[]; day?: number | null }
+export type ItemKind = 'task' | 'idea' | 'waiting'
+export type Item = {
+  id: string; kind: ItemKind; title: string; notes: string; status: 'open' | 'done' | 'dropped'
+  due_on: string | null; today_on: string | null; checklist: ChecklistItem[]; recurrence: Recurrence | null
+  labels: string[]; waiting: { who: string; since: string; nudge_after_days: number } | null
+  link: { workspace_id: string; task_id: string } | null; promoted_to: { workspace_id: string; task_id: string } | null
+  created_at: string; updated_at: string; done_at: string | null
+}
+export type Today = {
+  date: string; is_friday: boolean; rollover: Item[]; pinned: Item[]; due: Item[]; followups: Item[]
+  sent_back: { workspace_id: string; workspace_name: string; task: { id: string; number: number; title: string } }[]
+  approvals: { workspace_id: string; workspace_name: string; count: number }[]
+}
+export type Profile = { sub: string; name: string; email: string; tz: string; use_ai: boolean }

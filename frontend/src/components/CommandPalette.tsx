@@ -7,7 +7,7 @@ import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, Comma
 import { api } from '@/lib/api'
 import { qk, useWorkspace, wpath } from '@/lib/queries'
 import { currentTheme, setTheme } from '@/lib/theme'
-import type { Task } from '@/lib/types'
+import type { Item, Task } from '@/lib/types'
 import { useDebounced } from '@/lib/useDebounced'
 import { useShortcut } from '@/lib/useShortcut'
 
@@ -23,6 +23,11 @@ export function CommandPalette({ onNewTask, onCapture }: { onNewTask?: () => voi
   const number = /^#?(\d+)$/.exec(query)?.[1]
   useShortcut('mod+k', () => setOpen((o) => !o))
 
+  const mine = useQuery({
+    queryKey: qk.items({ palette: query }),
+    queryFn: () => api<Item[]>(`/api/me/items?q=${encodeURIComponent(query)}&limit=6`),
+    enabled: open && query.length > 0 && !number,
+  })
   const tasks = useQuery({
     queryKey: qk.tasks(wid, { palette: query }),
     queryFn: () => api<Task[]>(wpath(wid, number ? `/tasks?number=${number}` : `/tasks?q=${encodeURIComponent(query)}&limit=8`)),
@@ -59,6 +64,16 @@ export function CommandPalette({ onNewTask, onCapture }: { onNewTask?: () => voi
                   <span className="num w-10 text-muted-foreground">#{t.number}</span>
                   <span className="min-w-0 flex-1 truncate">{t.title}</span>
                   <StatusBadge status={t.status} />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {!!mine.data?.length && (
+            <CommandGroup heading="My items">
+              {mine.data.map((i) => (
+                <CommandItem key={i.id} value={`item-${i.id}`} onSelect={() => go(i.kind === 'idea' ? '/me/inbox' : i.kind === 'waiting' ? '/me/waiting' : `/me/tasks?item=${i.id}`)}>
+                  <span className="min-w-0 flex-1 truncate">{i.title}</span>
+                  <span className="text-xs text-muted-foreground">{i.kind === 'idea' ? 'Idea' : i.kind === 'waiting' ? 'Waiting on' : 'My task'}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
