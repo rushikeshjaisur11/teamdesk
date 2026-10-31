@@ -1,0 +1,24 @@
+# Same image as the API, different command. Safe to run more than one replica (items are claimed atomically).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teamdesk-worker
+  labels: { app: teamdesk-worker }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: teamdesk-worker }
+  template:
+    metadata:
+      labels: { app: teamdesk-worker }
+    spec:
+      containers:
+        - name: worker
+          image: image-registry.openshift-image-registry.svc:5000/teamdesk/teamdesk-api:latest
+          command: ["/app/.venv/bin/python", "-m", "app.worker"]
+          envFrom:
+            - configMapRef: { name: teamdesk-config }
+            - secretRef: { name: teamdesk-secrets }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
