@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- MongoDB features: only those in **MongoDB 4.4+** (text indexes, aggregation, `find_one_and_update`, unique indexes). **No multi-document transactions.** No Atlas Search, `mongot`, or vector indexes. Tests run against the `mongo:4.4` Docker image to prove this.
+- MongoDB: the real server is **8.0.26, replica set**. Use text indexes, aggregation, `find_one_and_update`, unique indexes. **No multi-document transactions** (kept simple). No Atlas Search, `mongot`, or vector indexes (need 8.2+). Tests run against the `mongo:8.0` Docker image.
 - Python driver: **PyMongo Async API (`AsyncMongoClient`)**. Never Motor.
 - `requires-python = ">=3.12"`; `.python-version` = `3.12` (container base is Python 3.12).
 - Every read/write of workspace-owned collections goes through `Scoped` (Task 2). No direct `db[...]` access for those collections anywhere else.

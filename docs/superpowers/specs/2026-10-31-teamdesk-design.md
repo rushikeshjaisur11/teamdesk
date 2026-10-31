@@ -52,7 +52,7 @@ TeamDesk is one internal web app, shared by many teams, where each team has an i
 ## 5. Constraints
 
 - **Hosting:** OpenShift. Containers only.
-- **Database:** MongoDB (chosen over Oracle). The MongoDB version is unknown and may be old. Use only features available in MongoDB **4.4+** (text indexes, aggregation). Do not depend on Atlas Search, `mongot`, or vector indexes. Oracle is not used.
+- **Database:** MongoDB (chosen over Oracle). The company runs **MongoDB 8.0.26 as a replica set** (owner, 2026-10-31). Use standard features (text indexes, aggregation). Self-managed search and vector search (`mongot`) need **8.2+**, so do not depend on them; the AI phase keeps the in-Python similarity fallback until the server is upgraded. Oracle is not used.
 - **No multi-document transactions** (designer's call): the server may be standalone, not a replica set. Jira-create idempotency, job claiming and doc version history are built on single-document atomic operations (`find_one_and_update`, unique indexes). Phase 1 starts by checking the real server version (`db.version()`) against the chosen PyMongo release's supported-server range.
 - **AI:** Vertex AI via the standard API key (`google-genai`, `genai.Client(vertexai=True, api_key=...)`). Production will go through an internal auth proxy; the owner will wire that themselves later, so **all AI calls must live in one module** that is easy to edit.
 - **Python driver:** use the **PyMongo Async API** (`AsyncMongoClient`). Motor is deprecated (bug fixes ended May 2026).
