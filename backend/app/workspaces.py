@@ -7,10 +7,11 @@ from pymongo.errors import DuplicateKeyError
 
 from app.access import DEFAULT_ROLES, PERMISSIONS, Ctx, require, resolve
 from app.audit import record
+from app.auth import User, current_user, is_platform_owner
 from app.db import new_id, now
 from app.scoped import Scoped
 from app.templates import seed_templates
-from app.auth import User, current_user, is_platform_owner
+
 
 async def create_workspace(db, name: str, slug: str, admin_group: str) -> dict:
     ws = {"_id": new_id(), "name": name, "slug": slug, "archived": False, "roles": DEFAULT_ROLES,
