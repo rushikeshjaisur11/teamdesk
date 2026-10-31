@@ -25,7 +25,11 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
   const res = await fetch(path, {
     ...rest,
     credentials: 'include',
-    headers: { ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(headers as Record<string, string>) },
+    headers: {
+      'X-Requested-With': 'TeamDesk',
+      ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(headers as Record<string, string>),
+    },
     body: json !== undefined ? JSON.stringify(json) : rest.body,
   })
   if (res.status === 204) return undefined as T

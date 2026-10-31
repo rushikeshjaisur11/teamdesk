@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from pymongo import AsyncMongoClient
 
@@ -36,6 +37,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(approvals.router)
     app.include_router(rules.router)
     app.include_router(notifications.router)
+
+    @app.middleware("http")
+    async def require_app_header(request: Request, call_next):
+        # Blocks cross-site form posts: browsers can't add this header to a cross-origin request
+        # without a CORS preflight, which this API never grants. Matters most with the env default user.
+        if request.method not in ("GET", "HEAD", "OPTIONS") and request.url.path.startswith("/api/")                 and request.headers.get("x-requested-with") != APP_NAME:
+            return JSONResponse({"detail": "Missing the TeamDesk request header."}, status_code=403)
+        return await call_next(request)
 
     @app.get("/api/health")
     async def health(request: Request):

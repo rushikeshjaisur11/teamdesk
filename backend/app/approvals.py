@@ -12,11 +12,13 @@ from app.tasks import actor, load, log_activity, view
 
 NEED_REASON = "Please add a reason so the author knows what to change."
 ALREADY = "This task was already decided by someone else. Refresh to see the latest."
+CHANGED = "This task changed since you opened it. Review the latest version, then decide."
 STATUS = {a: next_status("pending_approval", a) for a in ("approve", "reject", "request_changes", "duplicate", "snooze")}
 
 
 async def decide(ctx: Ctx, task_id: str, action: str, reason: str | None = None,
-                 duplicate_of: str | None = None, until: datetime | None = None) -> dict:
+                 duplicate_of: str | None = None, until: datetime | None = None,
+                 seen_updated_at: datetime | None = None) -> dict:
     if not ctx.can("task.approve"):
         raise HTTPException(403, "You don't have permission to do this. Ask a workspace admin.")
     if action not in STATUS:
@@ -24,6 +26,10 @@ async def decide(ctx: Ctx, task_id: str, action: str, reason: str | None = None,
     task = await load(ctx, task_id)
     if action == "approve" and task["author"]["sub"] == ctx.user.sub:
         raise HTTPException(403, "You can't approve your own task. Ask another approver.")
+    if action == "approve" and (task.get("last_edited_by") or {}).get("sub") == ctx.user.sub:
+        raise HTTPException(403, "You edited this task, so another approver must approve it.")
+    if seen_updated_at is not None and task["updated_at"] != seen_updated_at:
+        raise HTTPException(409, CHANGED)
     reason = (reason or "").strip() or None
     if action in ("reject", "request_changes") and not reason:
         raise HTTPException(422, NEED_REASON)
@@ -34,7 +40,7 @@ async def decide(ctx: Ctx, task_id: str, action: str, reason: str | None = None,
         raise HTTPException(422, "Pick a time in the future to snooze until.")
     decision = {"action": action, "by": actor(ctx), "at": now(), "reason": reason}
     task = await ctx.scoped.col("tasks").update(
-        {"_id": task_id, "status": {"$in": from_statuses(action)}},
+        {"_id": task_id, "status": {"$in": from_statuses(action)}, "updated_at": task["updated_at"]},
         {"$set": {"status": STATUS[action], "decision": decision, "updated_at": now(),
                   "duplicate_of": duplicate_of if action == "duplicate" else task.get("duplicate_of"),
                   "snoozed_until": until if action == "snooze" else None}})
@@ -64,6 +70,7 @@ class Decision(BaseModel):
     reason: str | None = Field(None, max_length=2000)
     duplicate_of: str | None = None
     until: AwareDatetime | None = None
+    seen_updated_at: AwareDatetime | None = None
 
 
 class Bulk(BaseModel):
@@ -86,7 +93,7 @@ async def queue_count(ctx: Ctx = Depends(require("task.approve"))):
 
 @router.post("/tasks/{task_id}/decision")
 async def post_decision(task_id: str, body: Decision, ctx: Ctx = Depends(require("task.view"))):
-    return view(await decide(ctx, task_id, body.action, body.reason, body.duplicate_of, body.until))
+    return view(await decide(ctx, task_id, body.action, body.reason, body.duplicate_of, body.until, body.seen_updated_at))
 
 
 @router.post("/approvals/bulk-approve")

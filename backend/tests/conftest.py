@@ -9,12 +9,15 @@ from app.db import ensure_indexes
 from app.main import create_app
 
 
+APP_HEADER = {"X-Requested-With": "TeamDesk"}
+
+
 @pytest.fixture
 def settings():
     return Settings(
         mongo_uri=os.environ.get("TEST_MONGO_URI", "mongodb://localhost:27018"),
         mongo_db="teamdesk_test",
-        session_secret="test",
+        session_secret="test-secret-test-secret-test-secret",
         https_only_cookies=False,
         dev_login_enabled=True,
     )
@@ -39,7 +42,7 @@ async def make_client(app):
     clients = []
 
     async def make():
-        c = httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://t")
+        c = httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://t", headers=APP_HEADER)
         clients.append(c)
         return c
 

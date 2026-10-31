@@ -101,6 +101,8 @@ router = APIRouter(prefix="/api/w/{workspace_id}/tasks")
 async def create_task(body: NewTask, ctx: Ctx = Depends(require("task.create"))):
     template = await get_template(ctx, body.type_key)
     check_field_keys(template, body.fields)
+    if body.submit and (missing := missing_required(template, body.fields)):
+        raise HTTPException(422, {"message": "Some required fields are empty.", "fields": missing})
     labels = template["default_labels"] if body.labels is None else body.labels
     t = now()
     task = await ctx.scoped.col("tasks").insert({
@@ -162,7 +164,8 @@ async def edit_task(task_id: str, body: TaskPatch, ctx: Ctx = Depends(require("t
     check_field_keys(await get_template(ctx, merged["type_key"]), merged["fields"])
     task = await ctx.scoped.col("tasks").update(
         {"_id": task_id, "status": task["status"]},
-        {"$set": {**changes, "search_text": search_text(merged["fields"], merged["labels"]), "updated_at": now()}})
+        {"$set": {**changes, "search_text": search_text(merged["fields"], merged["labels"]), "updated_at": now(),
+                  "last_edited_by": actor(ctx)}})
     if not task:
         raise HTTPException(409, "This task changed while you were editing it. Refresh and try again.")
     await log_activity(ctx, task_id, "edited", {"changed": sorted(changes)})

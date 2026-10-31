@@ -29,6 +29,7 @@ it('sends JSON with credentials and returns parsed body', async () => {
   expect(url).toBe('/api/x')
   expect(init).toMatchObject({ method: 'POST', credentials: 'include', body: '{"a":1}' })
   expect(init.headers['Content-Type']).toBe('application/json')
+  expect(init.headers['X-Requested-With']).toBe('TeamDesk')
 })
 
 it('returns undefined for 204', async () => {

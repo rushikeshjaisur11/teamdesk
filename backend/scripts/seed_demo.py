@@ -44,11 +44,11 @@ TASKS = [  # (author, type, title, fields, labels, submit)
 
 clients = {}
 for sub, (name, groups) in PEOPLE.items():
-    c = httpx.Client(base_url=BASE)
+    c = httpx.Client(base_url=BASE, headers={"X-Requested-With": "TeamDesk"})
     c.post("/api/auth/dev-login", json={"sub": f"{sub}@corp.test", "name": name, "email": f"{sub}@corp.test", "groups": groups}).raise_for_status()
     clients[sub] = c
 
-admin = httpx.Client(base_url=BASE)  # the API's default user (an admin)
+admin = httpx.Client(base_url=BASE, headers={"X-Requested-With": "TeamDesk"})  # the API's default user (an admin)
 ids = []
 for author, type_key, title, fields, labels, submit in TASKS:
     r = clients[author].post(f"/api/w/{WID}/tasks", json={"type_key": type_key, "title": title, "fields": fields, "labels": labels, "submit": submit})

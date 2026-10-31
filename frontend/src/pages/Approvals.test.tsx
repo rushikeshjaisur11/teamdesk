@@ -23,7 +23,7 @@ it('approves the selected task with A and moves to the next', async () => {
   render()
   await screen.findByRole('listbox', { name: 'Waiting for approval' })
   await userEvent.keyboard('a')
-  expect(fn).toHaveBeenCalledWith('/api/w/w1/tasks/t1/decision', expect.objectContaining({ method: 'POST', json: { action: 'approve' } }))
+  expect(fn).toHaveBeenCalledWith('/api/w/w1/tasks/t1/decision', expect.objectContaining({ method: 'POST', json: { action: 'approve', seen_updated_at: T1.updated_at } }))
   await waitFor(() => expect(queue().queryByText(T1.title)).toBeNull())
   expect(queue().getByRole('option', { selected: true })).toHaveTextContent(T2.title)
 })

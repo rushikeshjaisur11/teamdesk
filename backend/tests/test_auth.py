@@ -2,7 +2,7 @@ import httpx
 from httpx import ASGITransport
 
 from app.main import create_app
-from tests.conftest import login
+from tests.conftest import APP_HEADER, login
 
 
 async def test_dev_login_then_session_user(make_client, db):
@@ -20,7 +20,7 @@ async def test_me_requires_login(make_client):
 
 async def test_dev_login_disabled_returns_404(settings):
     settings.dev_login_enabled = False
-    c = httpx.AsyncClient(transport=ASGITransport(app=create_app(settings)), base_url="http://t")
+    c = httpx.AsyncClient(transport=ASGITransport(app=create_app(settings)), base_url="http://t", headers=APP_HEADER)
     r = await c.post("/api/auth/dev-login", json={"sub": "x", "name": "x", "email": "", "groups": []})
     assert r.status_code == 404
 
@@ -50,7 +50,7 @@ async def test_default_user_from_env_when_no_session(settings, db):
     settings.dev_user_groups = "grp-a, grp-b"
     app = create_app(settings)
     async with app.router.lifespan_context(app):
-        c = httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://t")
+        c = httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://t", headers=APP_HEADER)
         me = (await c.get("/api/auth/me")).json()["user"]
         assert (me["sub"], me["name"]) == ("asha@corp.test", "Asha Rao")
         assert (await db.users.find_one({"_id": "asha@corp.test"}))["groups"] == ["grp-a", "grp-b"]

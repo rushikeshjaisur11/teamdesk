@@ -72,8 +72,9 @@ export function Approvals() {
     setSelectedId(next?.id)
   }
   const restore = (t: Task) => { setHidden((h) => h.filter((x) => x !== t.id)); setSelectedId(t.id) }
+  // seen_updated_at: the server refuses the decision if the author changed the task after this version was shown.
   const decide = (t: Task, body: Record<string, unknown>) =>
-    api<Task>(wpath(wid, `/tasks/${t.id}/decision`), { method: 'POST', json: body })
+    api<Task>(wpath(wid, `/tasks/${t.id}/decision`), { method: 'POST', json: { ...body, seen_updated_at: t.updated_at } })
 
   const approve = (t: Task | undefined) => {
     if (!t) return

@@ -16,8 +16,8 @@ docker run -d --name teamdesk-mongo -p 27017:27017 mongo:8.0
 cd backend
 uv sync
 DEV_USER_SUB=you@corp.test DEV_USER_NAME="Your Name" DEV_USER_GROUPS=teamdesk-platform-owners \
-SESSION_SECRET=dev HTTPS_ONLY_COOKIES=false \
-uv run uvicorn app.main:create_app --factory --reload --port 8000
+SESSION_SECRET=local-dev-secret-local-dev-secret-0 HTTPS_ONLY_COOKIES=false \
+uv run uvicorn app.main:create_app --factory --reload --port 8000   # SESSION_SECRET must be 32+ chars
 
 # 3. Web app on http://localhost:5173 (proxies /api to the API)
 cd frontend
@@ -53,7 +53,7 @@ All settings are environment variables (upper-case names). Per-team settings liv
 |---|---|---|
 | `MONGO_URI` | `mongodb://localhost:27017` | MongoDB connection string (a replica set in production) |
 | `MONGO_DB` | `teamdesk` | Database name |
-| `SESSION_SECRET` | required | Signs session cookies. Use 64 random characters |
+| `SESSION_SECRET` | required | Signs session cookies. At least 32 random characters (the API refuses to start otherwise) |
 | `SESSION_MAX_AGE` | `28800` | Session lifetime in seconds |
 | `HTTPS_ONLY_COOKIES` | `true` | Set `false` only for local HTTP |
 | `PLATFORM_OWNER_GROUP` | `teamdesk-platform-owners` | Group allowed to create and archive workspaces |

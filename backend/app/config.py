@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 APP_NAME = "TeamDesk"
@@ -6,7 +7,7 @@ APP_NAME = "TeamDesk"
 class Settings(BaseSettings):
     mongo_uri: str = "mongodb://localhost:27017"
     mongo_db: str = "teamdesk"
-    session_secret: str
+    session_secret: str = Field(min_length=32)  # signs session cookies; a short or placeholder secret lets anyone forge one
     session_max_age: int = 28800
     https_only_cookies: bool = True
     dev_login_enabled: bool = False

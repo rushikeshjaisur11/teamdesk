@@ -13,9 +13,14 @@ from app.scoped import out
 log = logging.getLogger(__name__)
 
 
+def email_subject(text: str) -> str:
+    """Mail headers can't hold line breaks; the subject is the first line, the body keeps everything."""
+    return text.splitlines()[0][:150] if text else ""
+
+
 def send_email(settings: Settings, to: str, subject: str, body: str) -> None:
     msg = EmailMessage()
-    msg["From"], msg["To"], msg["Subject"] = settings.smtp_from, to, subject
+    msg["From"], msg["To"], msg["Subject"] = settings.smtp_from, to, email_subject(subject)
     msg.set_content(body)
     try:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as smtp:
