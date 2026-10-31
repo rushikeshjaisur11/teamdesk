@@ -1,17 +1,19 @@
 """My space: one person's private items, profile and notes. Everything here goes through Personal(owner = caller)."""
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
+from app.access import resolve
 from app.auth import User, current_user
 from app.config import Settings
 from app.db import now
 from app.my_time import next_due, today_for
-from app.scoped import Personal, ScopedCollection, out
+from app.task_flow import queue_filter
+from app.scoped import Personal, Scoped, ScopedCollection, out
 
 Label = Annotated[str, StringConstraints(pattern=r"^\S{1,50}$")]
 Kind = Literal["task", "idea", "waiting"]
@@ -252,3 +254,32 @@ async def complete_item(item_id: str, me: Me = Depends(personal)):
             "search_text": done.get("search_text", ""),
         })
     return {"item": item_view(done), "next": item_view(nxt) if nxt else None}
+
+
+@router.get("/today")
+async def today_view(me: Me = Depends(personal)):
+    today = me.today()
+    d = today.isoformat()
+    open_items = await me.items.find({"status": "open"}, sort=[("due_on", 1), ("created_at", 1)])
+    rollover = [i for i in open_items if i.get("today_on") and i["today_on"] < d]
+    pinned = [i for i in open_items if i.get("today_on") == d]
+    due = [i for i in open_items if i["kind"] == "task" and i.get("due_on") and i["due_on"] <= d and i.get("today_on") != d]
+    followups = [i for i in open_items if i["kind"] == "waiting"
+                 and date.fromisoformat(i["waiting"]["since"]) + timedelta(days=i["waiting"]["nudge_after_days"]) <= today]
+
+    sent_back, approvals = [], []
+    async for ws in me.db.workspaces.find({"archived": False}, sort=[("name", 1)]):
+        _, perms = resolve(ws, me.user.groups)
+        if not perms:
+            continue
+        tasks = Scoped(me.db, ws["_id"]).col("tasks")
+        for t in await tasks.find({"author.sub": me.user.sub, "status": "changes_requested"}, sort=[("updated_at", -1)]):
+            sent_back.append({"workspace_id": ws["_id"], "workspace_name": ws["name"],
+                              "task": {"id": t["_id"], "number": t["number"], "title": t["title"]}})
+        if "task.approve" in perms and (n := await tasks.count(queue_filter())):
+            approvals.append({"workspace_id": ws["_id"], "workspace_name": ws["name"], "count": n})
+
+    return {"date": d, "is_friday": today.weekday() == 4,
+            "rollover": [item_view(i) for i in rollover], "pinned": [item_view(i) for i in pinned],
+            "due": [item_view(i) for i in due], "followups": [item_view(i) for i in followups],
+            "sent_back": sent_back, "approvals": approvals}

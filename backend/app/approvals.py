@@ -7,7 +7,7 @@ from app.access import Ctx, require
 from app.audit import record
 from app.db import now
 from app.notifications import notify
-from app.task_flow import from_statuses, next_status
+from app.task_flow import from_statuses, next_status, queue_filter
 from app.tasks import actor, load, log_activity, view
 
 NEED_REASON = "Please add a reason so the author knows what to change."
@@ -59,10 +59,6 @@ def decision_text(number: int, action: str, who: str, reason: str | None) -> str
             "reject": f"#{number} was rejected by {who}: {reason}",
             "request_changes": f"{who} asked for changes on #{number}: {reason}",
             "duplicate": f"#{number} was marked as a duplicate by {who}"}.get(action)
-
-
-def queue_filter() -> dict:
-    return {"$or": [{"status": "pending_approval"}, {"status": "snoozed", "snoozed_until": {"$lte": now()}}]}
 
 
 class Decision(BaseModel):
