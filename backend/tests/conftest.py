@@ -46,3 +46,9 @@ async def make_client(app):
     yield make
     for c in clients:
         await c.aclose()
+
+
+async def login(client, sub: str, groups: list[str], name: str | None = None):
+    r = await client.post("/api/auth/dev-login", json={
+        "sub": sub, "name": name or sub.title(), "email": f"{sub}@example.com", "groups": groups})
+    assert r.status_code == 204, r.text
