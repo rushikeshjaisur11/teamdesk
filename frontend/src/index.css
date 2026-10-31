@@ -1,0 +1,64 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/schibsted-grotesk";
+@import "./styles/tokens.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Schibsted Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.15rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.4rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.55rem;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { @apply font-sans; font-feature-settings: "tnum" 0; }
+  body { @apply bg-background text-foreground text-sm antialiased; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .num { font-variant-numeric: tabular-nums; }
+}
+
+/* The one bold moment: an ink stamp pressed onto a row when an approver decides. */
+@keyframes stamp-in {
+  from { transform: rotate(-8deg) scale(1.6); opacity: 0; }
+  to { transform: rotate(-8deg) scale(1); opacity: 1; }
+}
+.stamp {
+  display: inline-block;
+  transform: rotate(-8deg);
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  padding: 0 0.4rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  animation: stamp-in var(--motion) ease-out;
+}

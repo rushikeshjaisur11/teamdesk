@@ -1,0 +1,79 @@
+/*
+  TeamDesk visual direction: an intake desk where work gets signed off.
+  Ballpoint-blue ink on cool paper; statuses read like rubber-stamp inks.
+  One bold moment: the ink stamp when an approver decides (see .stamp in index.css).
+  Everything else stays quiet: one accent, one typeface (Schibsted Grotesk), 15px base.
+  Theme: light by default from prefers-color-scheme; `.dark` on <html> switches (shadcn convention).
+*/
+:root {
+  --background: #f4f6f9;
+  --foreground: #18202e;
+  --card: #ffffff;
+  --card-foreground: #18202e;
+  --popover: #ffffff;
+  --popover-foreground: #18202e;
+  --primary: #2141c4;
+  --primary-foreground: #ffffff;
+  --secondary: #ebeef3;
+  --secondary-foreground: #18202e;
+  --muted: #eef1f5;
+  --muted-foreground: #566175;
+  --accent: #e8ecf4;
+  --accent-foreground: #18202e;
+  --destructive: #b42318;
+  --border: #dce1e8;
+  --input: #cdd4de;
+  --ring: #2141c4;
+  --radius: 0.5rem;
+
+  --st-draft: #5b6475;
+  --st-pending: #9a5b00;
+  --st-changes: #7a3fc2;
+  --st-approved: #1f7a3d;
+  --st-rejected: #b42318;
+  --st-duplicate: #5e6a7d;
+  --st-snoozed: #2f6f95;
+  --st-jira: #2141c4;
+  --st-jira-failed: #c2410c;
+  --st-progress: #0e7490;
+  --st-done: #166534;
+
+  --motion: 160ms;
+}
+
+.dark {
+  --background: #11151c;
+  --foreground: #e7ebf1;
+  --card: #181d26;
+  --card-foreground: #e7ebf1;
+  --popover: #1c222c;
+  --popover-foreground: #e7ebf1;
+  --primary: #8ea2ff;
+  --primary-foreground: #0e1430;
+  --secondary: #232a35;
+  --secondary-foreground: #e7ebf1;
+  --muted: #20262f;
+  --muted-foreground: #9aa4b5;
+  --accent: #262e3a;
+  --accent-foreground: #e7ebf1;
+  --destructive: #f87171;
+  --border: #2a313d;
+  --input: #343c4a;
+  --ring: #8ea2ff;
+
+  --st-draft: #a3acba;
+  --st-pending: #f0b44c;
+  --st-changes: #c4a1ff;
+  --st-approved: #5ccb83;
+  --st-rejected: #f87171;
+  --st-duplicate: #94a3b8;
+  --st-snoozed: #7cb7db;
+  --st-jira: #8ea2ff;
+  --st-jira-failed: #fb923c;
+  --st-progress: #4fc3d9;
+  --st-done: #4ade80;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion: 0ms; }
+}
