@@ -5,6 +5,7 @@ import { Today } from '@/pages/me/Today'
 import { Waiting } from '@/pages/me/Waiting'
 import { Approvals } from '@/pages/Approvals'
 import { Home } from '@/pages/Home'
+import { ShareTarget } from '@/pages/ShareTarget'
 import { Workspaces } from '@/pages/platform/Workspaces'
 import { SettingsLayout } from '@/pages/settings/SettingsLayout'
 import { Tasks } from '@/pages/Tasks'
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="approvals" element={<Approvals />} />
         <Route path="settings/*" element={<SettingsLayout />} />
       </Route>
+      <Route path="/share" element={<ShareTarget />} />
       <Route path="/platform/workspaces" element={<Workspaces />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

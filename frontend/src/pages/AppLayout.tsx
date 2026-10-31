@@ -90,7 +90,7 @@ export function AppLayout() {
           header={
             <div className={compact ? 'flex justify-center' : 'flex items-center justify-between pl-1'}>
               <BrandMark withName={!compact} />
-              {!compact && ws && <NotificationBell wid={wid} />}
+              {!compact && <NotificationBell wid={ws ? wid : ''} />}
             </div>
           }
           footer={

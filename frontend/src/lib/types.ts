@@ -30,6 +30,7 @@ export type Activity = {
 }
 export type Rule = { id: string; name: string; enabled: boolean; type_keys: string[]; author_roles: string[]; labels_any: string[] }
 export type Notification = { id: string; user_sub: string; kind: string; task_id: string; text: string; read: boolean; created_at: string }
+export type PersonalNotification = { id: string; kind: 'reminder' | 'nudge'; text: string; item_id: string | null; read: boolean; created_at: string }
 export type Member = { sub: string; name: string; email: string; roles: string[] }
 export type AuditEntry = { id: string; at: string; actor: Person; action: string; target: string; data: Record<string, unknown> }
 export type RoleDef = { name: string; permissions: string[] }
