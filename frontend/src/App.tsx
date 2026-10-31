@@ -2,7 +2,8 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Approvals } from '@/pages/Approvals'
 import { Home } from '@/pages/Home'
 import { Inbox } from '@/pages/Inbox'
-import { Placeholder } from '@/pages/Placeholder'
+import { Workspaces } from '@/pages/platform/Workspaces'
+import { SettingsLayout } from '@/pages/settings/SettingsLayout'
 import { Tasks } from '@/pages/Tasks'
 import { WorkspaceLayout } from '@/pages/WorkspaceLayout'
 import { MockApprovals } from '@/pages/mockup/MockApprovals'
@@ -18,9 +19,9 @@ export default function App() {
         <Route path="inbox" element={<Inbox />} />
         <Route path="tasks/:taskId?" element={<Tasks />} />
         <Route path="approvals" element={<Approvals />} />
-        <Route path="settings/*" element={<Placeholder title="Settings" />} />
+        <Route path="settings/*" element={<SettingsLayout />} />
       </Route>
-      <Route path="/platform/workspaces" element={<Placeholder title="Workspaces" />} />
+      <Route path="/platform/workspaces" element={<Workspaces />} />
       <Route path="/mockup/tasks" element={<MockTasks />} />
       <Route path="/mockup/approvals" element={<MockApprovals />} />
       <Route path="/mockup/docs" element={<MockDocs />} />
