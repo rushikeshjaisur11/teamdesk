@@ -283,3 +283,29 @@ async def today_view(me: Me = Depends(personal)):
             "rollover": [item_view(i) for i in rollover], "pinned": [item_view(i) for i in pinned],
             "due": [item_view(i) for i in due], "followups": [item_view(i) for i in followups],
             "sent_back": sent_back, "approvals": approvals}
+
+
+class NoteBody(BaseModel):
+    text: str = Field(max_length=20000)
+
+
+async def require_task_access(me: Me, workspace_id: str, task_id: str) -> None:
+    """A private note hangs off a team task; you must still be able to open that task."""
+    ws = await me.db.workspaces.find_one({"_id": workspace_id, "archived": False})
+    if not ws or "task.view" not in resolve(ws, me.user.groups)[1] \
+            or not await Scoped(me.db, workspace_id).col("tasks").find_one({"_id": task_id}):
+        raise HTTPException(404, "Task not found.")
+
+
+@router.get("/notes/{workspace_id}/{task_id}")
+async def get_note(workspace_id: str, task_id: str, me: Me = Depends(personal)):
+    await require_task_access(me, workspace_id, task_id)
+    note = await me.notes.find_one({"workspace_id": workspace_id, "task_id": task_id})
+    return {"text": note["text"], "updated_at": note["updated_at"]} if note else {"text": "", "updated_at": None}
+
+
+@router.put("/notes/{workspace_id}/{task_id}")
+async def put_note(workspace_id: str, task_id: str, body: NoteBody, me: Me = Depends(personal)):
+    await require_task_access(me, workspace_id, task_id)
+    note = await me.notes.upsert({"workspace_id": workspace_id, "task_id": task_id}, {"text": body.text, "updated_at": now()})
+    return {"text": note["text"], "updated_at": note["updated_at"]}

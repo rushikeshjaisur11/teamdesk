@@ -45,6 +45,13 @@ class ScopedCollection:
         self._check(update)
         return (await self._col.update_many(self._f(filter), update)).modified_count
 
+    async def upsert(self, filter: dict, fields: dict) -> dict:
+        """Set fields on the one matching document, creating it (with this key) if missing."""
+        t = now()
+        return await self._col.find_one_and_update(
+            self._f(filter), {"$set": fields, "$setOnInsert": {"_id": new_id(), "created_at": t}},
+            upsert=True, return_document=ReturnDocument.AFTER)
+
     async def count(self, filter: dict) -> int:
         return await self._col.count_documents(self._f(filter))
 

@@ -24,3 +24,11 @@ async def test_personal_owner_cannot_be_changed(db):
 
 def test_out_hides_owner():
     assert out({"_id": "1", "owner_sub": "asha", "t": 1}) == {"id": "1", "t": 1}
+
+
+async def test_upsert_keeps_owner(db):
+    a, b = Personal(db, "asha").col("personal_notes"), Personal(db, "dan").col("personal_notes")
+    n = await a.upsert({"task_id": "t1"}, {"text": "mine"})
+    assert n["owner_sub"] == "asha"
+    await b.upsert({"task_id": "t1"}, {"text": "his"})
+    assert (await a.find_one({"task_id": "t1"}))["text"] == "mine"
