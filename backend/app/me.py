@@ -5,10 +5,10 @@ from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from pydantic import BaseModel, Field, StringConstraints, model_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 
 from app.access import resolve
-from app.auth import User, current_user
+from app.auth import User, current_user, remember_user
 from app.config import Settings
 from app.db import now
 from app.my_time import next_due, today_for
@@ -56,6 +56,14 @@ class ItemFields(BaseModel):
     due_on: date | None = None
     labels: list[Label] | None = Field(None, max_length=20)
     checklist: list[ChecklistItem] | None = Field(None, max_length=50)
+
+    @field_validator("checklist")
+    @classmethod
+    def unique_ids(cls, v):
+        if v and len({c.id for c in v}) != len(v):
+            raise ValueError("Checklist items need distinct ids.")
+        return v
+
     recurrence: Recurrence | None = None
     waiting: Waiting | None = None
 
@@ -76,6 +84,13 @@ class NewItem(ItemFields):
 
 class ItemPatch(ItemFields):
     kind: Literal["task"] | None = None  # an idea can become a task; nothing else changes kind
+
+    @model_validator(mode="after")
+    def no_null_required(self):
+        for f in ("title", "notes", "labels", "checklist", "waiting", "kind"):
+            if f in self.model_fields_set and getattr(self, f) is None:
+                raise ValueError(f"{f} cannot be empty.")
+        return self
 
 
 class ProfilePatch(BaseModel):
@@ -138,10 +153,11 @@ async def patch_profile(body: ProfilePatch, me: Me = Depends(personal)):
     if "tz" in changes:
         try:
             ZoneInfo(changes["tz"])
-        except (ZoneInfoNotFoundError, ValueError):
+        except (ZoneInfoNotFoundError, ValueError, OSError):
             raise HTTPException(422, "Unknown time zone.")
     if changes:
-        await me.db.users.update_one({"_id": me.user.sub}, {"$set": changes}, upsert=True)
+        await remember_user(me.db, me.user)  # never leave a users doc without name, email and groups
+        await me.db.users.update_one({"_id": me.user.sub}, {"$set": changes})
     me.tz, me.use_ai = changes.get("tz", me.tz), changes.get("use_ai", me.use_ai)
     return await get_profile(me)
 
@@ -182,6 +198,8 @@ async def load_item(me: Me, item_id: str) -> dict:
 async def patch_item(item_id: str, body: ItemPatch, me: Me = Depends(personal)):
     item = await load_item(me, item_id)
     changes = stored(body.model_dump(exclude_unset=True), me)
+    if changes.get("kind") == "task" and item["kind"] == "waiting":
+        changes["waiting"] = None
     merged = {**item, **changes}
     if merged.get("recurrence") and merged["kind"] != "task":
         raise HTTPException(422, "Only tasks can repeat.")
@@ -244,7 +262,8 @@ async def complete_item(item_id: str, me: Me = Depends(personal)):
     if not done:
         raise HTTPException(409, "Already done.")
     nxt = None
-    if rule := done.get("recurrence"):
+    prior = done.get("next_id") and await me.items.find_one({"_id": done["next_id"], "status": "open"})
+    if (rule := done.get("recurrence")) and not prior:
         due = date.fromisoformat(done["due_on"]) if done.get("due_on") else None
         nxt = await me.items.insert({
             **{k: done[k] for k in ("kind", "title", "notes", "labels", "recurrence", "waiting", "link")},
@@ -253,6 +272,7 @@ async def complete_item(item_id: str, me: Me = Depends(personal)):
             "status": "open", "today_on": None, "promoted_to": None, "done_at": None, "updated_at": t,
             "search_text": done.get("search_text", ""),
         })
+        await me.items.update({"_id": item_id}, {"$set": {"next_id": nxt["_id"]}})
     return {"item": item_view(done), "next": item_view(nxt) if nxt else None}
 
 
@@ -263,7 +283,7 @@ async def today_view(me: Me = Depends(personal)):
     open_items = await me.items.find({"status": "open"}, sort=[("due_on", 1), ("created_at", 1)])
     rollover = [i for i in open_items if i.get("today_on") and i["today_on"] < d]
     pinned = [i for i in open_items if i.get("today_on") == d]
-    due = [i for i in open_items if i["kind"] == "task" and i.get("due_on") and i["due_on"] <= d and i.get("today_on") != d]
+    due = [i for i in open_items if i["kind"] == "task" and i.get("due_on") and i["due_on"] <= d and not i.get("today_on")]
     followups = [i for i in open_items if i["kind"] == "waiting"
                  and date.fromisoformat(i["waiting"]["since"]) + timedelta(days=i["waiting"]["nudge_after_days"]) <= today]
 

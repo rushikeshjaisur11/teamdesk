@@ -36,7 +36,7 @@ def send_email(settings: Settings, to: str, subject: str, body: str) -> None:
 async def approver_subs(ctx: Ctx) -> list[str]:
     subs = []
     async for u in ctx.scoped.db.users.find({}):
-        if "task.approve" in resolve(ctx.workspace, u["groups"])[1]:
+        if "task.approve" in resolve(ctx.workspace, u.get("groups", []))[1]:
             subs.append(u["_id"])
     return subs
 
@@ -51,7 +51,7 @@ async def notify(ctx: Ctx, user_subs: list[str], kind: str, task: dict, text: st
         return
     link = f"{settings.public_url}/w/{ctx.scoped.workspace_id}/tasks/{task['_id']}"
     async for u in ctx.scoped.db.users.find({"_id": {"$in": recipients}, "email": {"$ne": ""}}):
-        ctx.background.add_task(send_email, settings, u["email"], text, f"{text}\n\n{link}")
+        ctx.background.add_task(send_email, settings, u.get("email", ""), text, f"{text}\n\n{link}")
 
 
 router = APIRouter(prefix="/api/w/{workspace_id}/notifications")
