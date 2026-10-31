@@ -7,7 +7,7 @@ import { MyTasks } from './MyTasks'
 
 export function makeItem(over: Partial<Item> = {}): Item {
   return { id: 'i1', kind: 'task', title: 'Ring the vendor', notes: '', status: 'open', due_on: null, today_on: null,
-    checklist: [], recurrence: null, labels: [], waiting: null, link: null, promoted_to: null,
+    checklist: [], recurrence: null, labels: [], waiting: null, link: null, promoted_to: null, remind_at: null,
     created_at: '2026-10-31T10:00:00Z', updated_at: '2026-10-31T10:00:00Z', done_at: null, ...over }
 }
 

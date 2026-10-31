@@ -1,4 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { api } from '@/lib/api'
@@ -11,6 +14,12 @@ export function ProfileDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   const save = useMutation({
     mutationFn: (use_ai: boolean) => api<Profile>('/api/me/profile', { method: 'PATCH', json: { use_ai } }),
     onSuccess: (p) => qc.setQueryData(qk.profile, p),
+  })
+  const feed = useQuery({ queryKey: ['me', 'calendar'], queryFn: () => api<{ enabled: boolean }>('/api/me/calendar'), enabled: open })
+  const [url, setUrl] = useState('')
+  const reset = useMutation({
+    mutationFn: () => api<{ url: string }>('/api/me/calendar/reset', { method: 'POST' }),
+    onSuccess: (r) => { setUrl(r.url); qc.invalidateQueries({ queryKey: ['me', 'calendar'] }) },
   })
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -31,6 +40,16 @@ export function ProfileDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <div>
               <dt className="font-medium">Time zone</dt>
               <dd className="text-muted-foreground">{profile.data.tz}, taken from this browser. It decides when your day starts.</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Calendar link</dt>
+              <dd className="space-y-2 text-muted-foreground">
+                <p>Shows the titles of your dated items and reminders in Outlook or Google Calendar. Never notes. Anyone with the link can see those titles, so reset it if it leaks.</p>
+                {url && <Input readOnly aria-label="Calendar link" value={url} onFocus={(e) => e.currentTarget.select()} />}
+                <Button variant="outline" size="sm" disabled={reset.isPending} onClick={() => reset.mutate()}>
+                  {feed.data?.enabled || url ? 'Reset link' : 'Create link'}
+                </Button>
+              </dd>
             </div>
           </dl>
         )}

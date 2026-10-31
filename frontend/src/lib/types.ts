@@ -51,6 +51,7 @@ export type Item = {
   due_on: string | null; today_on: string | null; checklist: ChecklistItem[]; recurrence: Recurrence | null
   labels: string[]; waiting: { who: string; since: string; nudge_after_days: number } | null
   link: { workspace_id: string; task_id: string } | null; promoted_to: { workspace_id: string; task_id: string } | null
+  remind_at: string | null
   created_at: string; updated_at: string; done_at: string | null
 }
 export type Today = {
