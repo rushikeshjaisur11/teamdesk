@@ -56,7 +56,7 @@ TeamDesk is one internal web app, shared by many teams, where each team has an i
 - **No multi-document transactions** (designer's call): the server may be standalone, not a replica set. Jira-create idempotency, job claiming and doc version history are built on single-document atomic operations (`find_one_and_update`, unique indexes). Phase 1 starts by checking the real server version (`db.version()`) against the chosen PyMongo release's supported-server range.
 - **AI:** Vertex AI via the standard API key (`google-genai`, `genai.Client(vertexai=True, api_key=...)`). Production will go through an internal auth proxy; the owner will wire that themselves later, so **all AI calls must live in one module** that is easy to edit.
 - **Python driver:** use the **PyMongo Async API** (`AsyncMongoClient`). Motor is deprecated (bug fixes ended May 2026).
-- **Identity:** users sign in with their company identity; access and roles come from company **entitlement groups** (see open questions §13 for the mechanism).
+- **Identity:** access and roles come from company **entitlement groups**. **Company sign-in is deferred — the owner will add it later.** Until then the app uses a simple sign-in form (name, email, groups) that creates the same session a real login will; all sign-in goes through one `sign_in(request, user)` function so the real login slots in without touching anything else.
 - **Jira:** may be Jira Cloud or Jira Data Center — support both. Use REST API v2 (`/rest/api/2/issue`) which works on both; Cloud auth = email + API token (Basic), Data Center auth = Personal Access Token (Bearer).
 - **GitHub:** may be github.com or GitHub Enterprise Server — base URL is configurable.
 
@@ -68,9 +68,9 @@ TeamDesk is one internal web app, shared by many teams, where each team has an i
   - **Approver:** approve / reject / request changes / mark duplicate; everything a Member can do.
   - **Member:** create and edit own tasks, comment, create and edit docs.
   - **Viewer:** read-only.
-- **Permissions are a matrix** (role × permission) editable by workspace admins. Permissions at minimum: `task.create`, `task.edit_any`, `task.approve`, `doc.edit`, `doc.manage_folders`, `settings.manage`, `connections.manage`, `roles.manage`.
+- **Permissions are a matrix** (role × permission) editable by workspace admins. Permissions at minimum: `task.view`, `task.create`, `task.edit_any`, `task.approve`, `jira.view_all`, `doc.edit`, `doc.manage_folders`, `settings.manage`, `connections.manage`, `roles.manage`. `jira.view_all` (default: Admin and Approver) is the "manager" permission for seeing every Jira ticket (§7.5).
 - **Group → role mapping per workspace:** a workspace admin maps company entitlement groups to roles (e.g. `grp-data-eng-approvers → Approver`). Membership is derived from the user's groups at sign-in — no manual user management. A user may belong to many workspaces with different roles, and switches via a workspace switcher.
-- **Local admin login** exists only for first-time setup and testing, enabled by env var, off by default.
+- **Interim sign-in** (until company login is added): a form with name, email and groups, enabled by env var `DEV_LOGIN_ENABLED`. It is not secure and must not be exposed outside the company network.
 
 ## 7. Features and flows
 
@@ -86,6 +86,8 @@ TeamDesk is one internal web app, shared by many teams, where each team has an i
 
 ### 7.3 Auto-approve rules
 - Per workspace, admin-defined: conditions on task type, author role, labels (e.g. "Members' tech-debt tasks auto-approve"). Matching tasks go straight to `approved` and create the Jira ticket immediately. The rule that fired is recorded in the audit log.
+- **Developer tasks skip the queue by default** (owner's decision): every new workspace is seeded with an enabled rule "Developer tasks skip the queue" matching author role `member`. Admins can narrow or disable it.
+- **Compliance:** having a Jira key before merge is a compliance control. Therefore **self-approval is always blocked** (an approver cannot approve their own task; there is no setting to allow it), only admins can change rules, and every rule change and rule firing is in the audit log.
 
 ### 7.4 Approval queue
 - List of `pending_approval` tasks, oldest first, with a detail pane.
@@ -98,6 +100,8 @@ TeamDesk is one internal web app, shared by many teams, where each team has an i
 - On approve, create the Jira issue from the template mapping; store the key and URL on the task; status → `in_jira`.
 - Failures (auth, required field missing in Jira, network) put the task in `jira_failed` with the error shown in plain language and a **Retry** button. Creation is retried automatically a few times with backoff. Never create duplicates on retry (store an idempotency marker; check for an existing issue with that marker before re-creating).
 - **Status back from Jira:** a Jira webhook updates the task's status; a periodic reconcile job (e.g. every 10 minutes) polls Jira for tasks whose status may have changed, in case webhooks can't reach OpenShift. Jira statuses map to TeamDesk statuses via a per-workspace mapping (`To Do → in_jira`, `In Progress → in_progress`, `Done → done`).
+- **Jira identity** (owner's decision): tickets are created by the workspace's **service account** by default. A user may also **connect their own Jira account** (personal token, stored encrypted, per user per workspace); when the approved task's author has connected an account, the ticket is created as them, otherwise by the service account with the requester named in the description.
+- **Jira tickets created outside TeamDesk are shown too** (owner's decision): each workspace mirrors its Jira project(s) via a configurable JQL query, polled by the worker. Mirrored tickets appear in the task list as read-only "From Jira" items that skip approval. Visibility: **a user sees only the Jira tickets where they are the assignee or reporter; users with `jira.view_all` (managers) see all.** TeamDesk users are matched to Jira users by email (on Jira Cloud, where email may be hidden by privacy settings, a user's connected account or a manual mapping in Settings links them). Tickets TeamDesk created are not duplicated by the mirror (matched by Jira key).
 - Task statuses: `draft`, `pending_approval`, `changes_requested`, `approved`, `in_jira`, `jira_failed`, `in_progress`, `done`, `rejected`, `duplicate`, `snoozed`.
 
 ### 7.6 GitHub
@@ -126,7 +130,7 @@ TeamDesk is one internal web app, shared by many teams, where each team has an i
 ### 7.11 Notifications
 - In-app notification centre (bell) for: decisions on my tasks, comments, mentions, Jira creation failures, tasks waiting for my approval.
 - Email via SMTP (configured by env vars, install-wide).
-- Optional per-workspace Microsoft Teams / Slack incoming-webhook connection for posting decisions to a channel.
+- Optional per-workspace **Microsoft Teams** connection for posting decisions to a channel. Office 365 connectors (the old "Incoming Webhook") were retired in 2026; use a **Teams Workflows webhook** URL and post **Adaptive Card** payloads.
 
 ### 7.12 Excel import / export
 - One-time import of the manager's existing sheet: upload `.xlsx`, map columns to task fields, preview, import.
@@ -153,7 +157,8 @@ TeamDesk is one internal web app, shared by many teams, where each team has an i
 
 - **Jira:** base URL, Cloud vs Data Center, credentials, default project, issue-type mapping per task type, field mapping, status mapping, **Test connection** button showing exactly what failed.
 - **GitHub:** base URL (github.com or Enterprise), token or GitHub App, repos to link, **Test connection**.
-- **Teams / Slack:** incoming webhook URL, **Send test message**.
+- **Microsoft Teams:** Workflows webhook URL, **Send test message**.
+- **Per-user Jira account** (in the user's own profile, not workspace settings): personal access token (Data Center) or email + API token (Cloud), **Test connection**.
 - **Confluence:** used only for import; base URL + credentials, **Test connection**.
 - Secrets are encrypted at rest with a key from an environment variable, never returned to the browser after saving (show "•••• saved, replace").
 
@@ -195,16 +200,20 @@ Screen list: Sign-in · Workspace switcher · Inbox · Task list (filters, saved
 
 Each phase ends with a working, demoable app.
 
-## 13. Open questions — defaults taken (designer's calls, owner asked to start before answering)
+## 13. Decisions on the open questions
 
-The owner chose to start implementation before answering these. Each default below is the designer's call and can be changed later:
+Owner's answers (2026-10-31):
 
-1. **Identity:** generic **OIDC** sign-in (works with Azure AD / Okta / Keycloak / Ping); entitlement groups read from a configurable token claim (`OIDC_GROUPS_CLAIM`, default `groups`). Plus the env-gated local dev login. LDAP or proxy-header modes are not built until needed.
-2. **Jira tickets created outside TeamDesk:** not shown in v1. Only TeamDesk-created tickets are tracked. (Inbound JQL mirror is a later addition.)
-3. **Auto-approve** is the exception, not the main path: the fast approval queue gets priority. **Self-approval is blocked by default** (an approver cannot approve their own task); a workspace setting can allow it. Every decision is in the audit log.
-4. **Jira identity:** one **service account per workspace** (the connection credential). The requester's name and email are written into the ticket description; assignee is left unset unless the template sets one. Polling is the primary sync; webhooks are an optional speed-up.
-5. **Build/test against Jira Cloud and github.com first**, keeping Data Center / Enterprise support through the configurable base URL and auth type.
-6. **Chat tool:** generic incoming-webhook connection (works for Teams and Slack); formatting for a specific tool comes later.
+1. **Sign-in:** deferred; owner adds company login later (§5, §6).
+2. **Jira tickets created outside TeamDesk:** shown; users see their own, managers (`jira.view_all`) see all (§7.5).
+3. **Developer tasks skip the queue** by default; Jira-key-before-merge is a **compliance control**, so self-approval is always blocked (§7.3).
+4. **Jira identity:** service account by default, or the user's connected Jira account (§7.5, §9).
+5. **Jira Cloud and Jira Data Center are both in use** — both must work from the first Jira release (per-workspace choice). **GitHub Enterprise Server.** **Microsoft Teams.** **MongoDB is a replica set** (transactions are available, but the design keeps single-document atomic operations; no change needed).
+
+Designer's calls (can be changed):
+- "Developer tasks" = tasks authored by someone whose role is `member` (the seeded rule's condition).
+- The mirror's visibility rule applies to Jira tickets only; TeamDesk tasks stay visible to the whole workspace (it's the shared task list).
+- Polling is the primary Jira/GitHub sync; webhooks are an optional speed-up.
 
 ## 14. Left to the builder
 
