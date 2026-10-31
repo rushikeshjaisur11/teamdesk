@@ -71,7 +71,7 @@ ROLE_GROUPS = {"adm": "g-admin", "appr": "g-appr", "dev": "g-dev", "view": "g-vi
 
 
 @pytest.fixture
-async def ws_with_dev(make_client):
+async def ws_with_dev(make_client, db):
     wid = await make_workspace(make_client)
     clients = {}
     for sub, group in ROLE_GROUPS.items():
@@ -81,4 +81,11 @@ async def ws_with_dev(make_client):
         {"group": "g-admin", "role": "admin"}, {"group": "g-appr", "role": "approver"},
         {"group": "g-dev", "role": "member"}, {"group": "g-view", "role": "viewer"}])
     assert r.status_code == 200, r.text
+    await db.rules.delete_many({"workspace_id": wid})  # tests control auto-approval
     return wid, clients
+
+
+async def submitted(c, wid, who="dev"):
+    r = await c[who].post(f"/api/w/{wid}/tasks", json={**STORY, "submit": True})
+    assert r.status_code == 201, r.text
+    return r.json()["id"]

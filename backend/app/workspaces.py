@@ -9,6 +9,7 @@ from app.access import DEFAULT_ROLES, PERMISSIONS, Ctx, require, resolve
 from app.audit import record
 from app.auth import User, current_user, is_platform_owner
 from app.db import new_id, now
+from app.rules import seed_rules
 from app.scoped import Scoped
 from app.templates import seed_templates
 
@@ -18,6 +19,7 @@ async def create_workspace(db, name: str, slug: str, admin_group: str) -> dict:
           "group_mappings": [{"group": admin_group, "role": "admin"}], "created_at": now()}
     await db.workspaces.insert_one(ws)
     await seed_templates(Scoped(db, ws["_id"]))
+    await seed_rules(Scoped(db, ws["_id"]))
     return ws
 
 

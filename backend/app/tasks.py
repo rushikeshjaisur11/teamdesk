@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, StringConstraints
 
 from app.access import Ctx, require
+from app.audit import record
 from app.db import now
+from app.rules import find_matching_rule
 from app.scoped import out
 from app.task_flow import EDITABLE, missing_required, next_status, search_text
 from app.templates import get_template
@@ -60,14 +62,20 @@ async def submit_task(ctx: Ctx, task: dict) -> dict:
     missing = missing_required(template, task["fields"])
     if missing:
         raise HTTPException(422, {"message": "Some required fields are empty.", "fields": missing})
-    status = next_status(task["status"], "submit")
+    rule = await find_matching_rule(ctx, task)
     t = now()
-    task = await ctx.scoped.col("tasks").update(
-        {"_id": task["_id"], "status": task["status"]},
-        {"$set": {"status": status, "submitted_at": t, "updated_at": t}})
+    fields = {"status": next_status(task["status"], "auto_approve" if rule else "submit"),
+              "submitted_at": t, "updated_at": t}
+    if rule:
+        fields["decision"] = {"action": "approve", "by": {"sub": "rule", "name": rule["name"]}, "at": t, "reason": None}
+    task = await ctx.scoped.col("tasks").update({"_id": task["_id"], "status": task["status"]}, {"$set": fields})
     if not task:
         raise HTTPException(409, "This task changed while you were submitting it. Refresh and try again.")
-    await log_activity(ctx, task["_id"], "submitted")
+    if rule:
+        await log_activity(ctx, task["_id"], "auto_approved", {"rule": rule["name"]})
+        await record(ctx, "rule.fired", task["_id"], {"rule": rule["name"], "number": task["number"]})
+    else:
+        await log_activity(ctx, task["_id"], "submitted")
     return task
 
 
