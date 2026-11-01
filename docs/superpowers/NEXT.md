@@ -1,6 +1,6 @@
 # Where TeamDesk is, and what's next
 
-Updated 2026-10-31. Read this first when resuming.
+Updated 2026-11-01. Read this first when resuming.
 
 ## Done
 - **Phase 1–2** (merged to `main`): workspaces, roles, team tasks, approvals, notifications, settings, deploy files. Plan: `plans/2026-10-31-teamdesk-foundation-and-tasks.md`. Final review done; fixes merged.
@@ -10,12 +10,7 @@ Updated 2026-10-31. Read this first when resuming.
 - **My space step 2, mostly** (`plans/2026-10-31-teamdesk-my-space-step2.md`, tasks 1-7 done): `remind_at` on items, `app/worker.py` (reminders, nudges, atomic claim, email), `personal_notifications` + `/api/me/notifications`, calendar feed (`app/calendar_feed.py`), `deploy/openshift/worker.yaml`, PWA manifest/service worker/share target (`/share`), reminders in the bell, "Remind me" in the task sheet, calendar link in My settings. Backend: 165 tests. Frontend: 65 tests.
 
 ## Next, in order
-0. **Review and merge the `cloud/next-steps` PR** (it contains `my-space` plus the review fixes and step 2). Not merged by the automated run.
-2. **Finish My space step 2 (leftovers):**
-   - "Remind me" on a *team* task (creates a linked personal reminder item; the API already supports `link` + `remind_at`, the UI button is missing).
-   - Rate limit for the calendar feed is in-process (60/h per token per replica); move to Mongo if exact limits matter.
-   - Not verified: service worker/installability in a real browser, real SMTP delivery, worker under OpenShift. Icons are SVG only; some platforms want PNG 192/512.
-   - Minor review items left: team checklist PUT is last-write-wins and does not check duplicate ids (`tasks.py` put_checklist); the 3-pin limit is racy (documented); `Link` is not validated at item create.
+1. **Step 2 leftovers, done on `resume/step2-leftovers`:** "Remind me" on team tasks (private reminder linked to the task), duplicate checklist ids refused (422), and links to tasks you can't open refused at item create (404). Still open: the calendar-feed rate limit is per replica; PWA, real SMTP and the worker on OpenShift are not verified on real infrastructure; icons are SVG only; the 3-pin limit is racy (documented).
 3. **My space step 3, AI:** spec §6.2, §6.10–6.14, §8. `backend/app/ai.py` holds every Vertex call. Config is env only: `AI_ENABLED`, `VERTEX_API_KEY`, `GEMINI_MODEL`, `EMBEDDING_MODEL`. Respect each user's `use_ai` switch.
 4. **Jira, optional per workspace:** main spec §7.5 as amended by my-space spec §9. Covers Cloud and Data Center.
 5. **Docs space:** main spec §7.7–7.9.

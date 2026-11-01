@@ -180,6 +180,8 @@ async def list_items(kind: Kind | None = None, status: Literal["open", "done", "
 
 @router.post("/items", status_code=201)
 async def create_item(body: NewItem, me: Me = Depends(personal)):
+    if body.link:
+        await require_task_access(me, body.link.workspace_id, body.link.task_id)
     fields = stored(body.model_dump(), me)
     t = now()
     doc = {"notes": "", "labels": [], "checklist": [], **{k: v for k, v in fields.items() if v is not None},

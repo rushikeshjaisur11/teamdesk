@@ -203,6 +203,8 @@ async def put_checklist(task_id: str, body: Annotated[list[ChecklistItem], Field
     if task["status"] in ("rejected", "duplicate"):
         raise HTTPException(409, "This task is closed.")
     items = [i.model_dump() for i in body]
+    if len({i["id"] for i in items}) != len(items):
+        raise HTTPException(422, "Each step needs its own id.")
     # Progress, not ticket content: updated_at stays put so an approver's open review isn't invalidated.
     task = await ctx.scoped.col("tasks").update({"_id": task_id}, {"$set": {"checklist": items, "checklist_updated_at": now()}})
     await log_activity(ctx, task_id, "checklist", {"done": sum(i["done"] for i in items), "total": len(items)})

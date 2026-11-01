@@ -6,6 +6,7 @@ import { TaskProgress } from '@/components/TaskProgress'
 import { Checklist } from '@/components/Checklist'
 import { Markdownish } from '@/components/Markdownish'
 import { PrivateNote } from '@/components/PrivateNote'
+import { RemindTask } from '@/components/RemindTask'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -98,14 +99,13 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
         </div>
       )}
 
-      {mayEdit && (
-        <div className="flex gap-2 px-6 pb-4">
-          {EDITABLE.includes(t.status) && <Button variant="outline" onClick={() => setEditing(true)}><Pencil />Edit</Button>}
-          {['draft', 'changes_requested'].includes(t.status) && (
-            <Button onClick={() => submit.mutate()} disabled={submit.isPending}><Send />Submit for approval</Button>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2 px-6 pb-4">
+        {mayEdit && EDITABLE.includes(t.status) && <Button variant="outline" onClick={() => setEditing(true)}><Pencil />Edit</Button>}
+        {mayEdit && ['draft', 'changes_requested'].includes(t.status) && (
+          <Button onClick={() => submit.mutate()} disabled={submit.isPending}><Send />Submit for approval</Button>
+        )}
+        {!readOnly && <RemindTask wid={wid} task={t} />}
+      </div>
 
       <div className="space-y-5 px-6 pb-6">
         {sections.filter((s) => t.fields[s.key]?.trim()).map((s) => (
