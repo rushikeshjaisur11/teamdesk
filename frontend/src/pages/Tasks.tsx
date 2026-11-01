@@ -23,6 +23,8 @@ import { TaskDetailPane } from './TaskDetailPane'
 import { TaskForm } from './TaskForm'
 
 const ORDER: TaskStatus[] = ['pending_approval', 'changes_requested', 'draft', 'approved', 'in_jira', 'jira_failed', 'in_progress', 'snoozed', 'done', 'rejected', 'duplicate']
+const ARCHIVED: TaskStatus[] = ['done', 'rejected', 'duplicate']
+type Group = TaskStatus | 'archived' | null
 
 /** The line under the title: what in this view needs someone's attention. */
 export function tasksFinding(tasks: Task[]) {
@@ -64,8 +66,11 @@ export function Tasks() {
 
   const groups = useMemo(() => {
     const list = tasks.data ?? []
-    if (!grouped || query) return [[null, list] as const]
-    return ORDER.map((s) => [s, list.filter((t) => t.status === s)] as const).filter(([, ts]) => ts.length)
+    if (!grouped || query) return [[null as Group, list] as const]
+    return [
+      ...ORDER.filter((s) => !ARCHIVED.includes(s)).map((s) => [s as Group, list.filter((t) => t.status === s)] as const),
+      ['archived' as Group, list.filter((t) => ARCHIVED.includes(t.status))] as const,
+    ].filter(([, ts]) => ts.length)
   }, [tasks.data, grouped, query])
 
   const filtering = !!(query || mine || statuses.length || type)
@@ -140,10 +145,10 @@ export function Tasks() {
               <span className="hidden w-24 shrink-0 text-right @xl:inline">Updated</span>
             </div>
             {groups.map(([status, ts]) => (
-              <section key={status ?? 'all'} aria-label={status ? STATUS_LABELS[status] : 'Tasks'}>
+              <section key={status ?? 'all'} aria-label={status === 'archived' ? 'Archived' : status ? STATUS_LABELS[status] : 'Tasks'}>
                 {status && (
                   <h2 className="flex items-baseline gap-2 px-5 pt-4 pb-1.5 text-xs font-medium text-muted-foreground">
-                    {STATUS_LABELS[status]}<span className="num">{ts.length}</span>
+                    {status === 'archived' ? 'Archived' : STATUS_LABELS[status]}<span className="num">{ts.length}</span>
                   </h2>
                 )}
                 {ts.map((t) => (
@@ -152,7 +157,7 @@ export function Tasks() {
                       t.id === taskId && 'bg-accent')}>
                     <span className="task-id w-12 shrink-0 text-muted-foreground">#{t.number}</span>
                     <span className="min-w-0 flex-1 truncate">
-                      <span className="font-medium">{t.title}</span>
+                      <span className={cn('font-medium', ARCHIVED.includes(t.status) && 'font-normal text-muted-foreground line-through')}>{t.title}</span>
                       {!!t.checklist?.length && <span className="num ml-2 text-xs text-muted-foreground">{t.checklist.filter((c) => c.done).length}/{t.checklist.length}</span>}
                       {t.labels.slice(0, 2).map((l) => <span key={l} className="ml-2 hidden text-xs text-muted-foreground @3xl:inline">{l}</span>)}
                     </span>

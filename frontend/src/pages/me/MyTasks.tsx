@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { localToday, shiftDay, taskGroup, type TaskGroup } from '@/lib/days'
+import { localToday, taskGroup, type TaskGroup } from '@/lib/days'
 import { useItemActions } from '@/lib/itemActions'
 import { useItems } from '@/lib/queries'
 import type { Item } from '@/lib/types'
@@ -22,10 +22,8 @@ export function MyTasks() {
   const done = useItems({ kind: 'task', status: 'done' })
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
-  const [showDone, setShowDone] = useState(false)
   const editing = [...(open.data ?? []), ...(done.data ?? [])].find((i) => i.id === params.get('item')) ?? null
   const today = localToday()
-  const weekAgo = shiftDay(today, -7)
 
   const add = async () => {
     const t = title.trim()
@@ -38,7 +36,7 @@ export function MyTasks() {
   const openItem = (i: Item) => setParams({ item: i.id })
   const list = open.data ?? []
   const count = (g: TaskGroup) => list.filter((i) => taskGroup(i, today) === g).length
-  const recentDone = (done.data ?? []).filter((i) => (i.done_at ?? '') >= weekAgo)
+  const archived = (done.data ?? []).filter((i) => i.status !== 'open')
 
   return (
     <div className="mx-auto w-full max-w-4xl">
@@ -64,16 +62,12 @@ export function MyTasks() {
           </section>
         ))}
 
-      {!!recentDone.length && (
-        <section aria-label="Done this week" className="mx-6 mb-10">
-          <Button variant="ghost" size="sm" className="mb-2 px-0 text-muted-foreground" aria-expanded={showDone} onClick={() => setShowDone(!showDone)}>
-            Done this week <span className="num ml-1">{recentDone.length}</span>
-          </Button>
-          {showDone && (
-            <div className="overflow-hidden rounded-lg border bg-card">
-              {recentDone.map((i) => <ItemRow key={i.id} item={i} />)}
-            </div>
-          )}
+      {!!archived.length && (
+        <section aria-label="Archived" className="mx-6 mb-10">
+          <h2 className="mb-2 text-xs font-medium text-muted-foreground">Archived <span className="num">{archived.length}</span></h2>
+          <div className="overflow-hidden rounded-lg border bg-card">
+            {archived.map((i) => <ItemRow key={i.id} item={i} />)}
+          </div>
         </section>
       )}
 

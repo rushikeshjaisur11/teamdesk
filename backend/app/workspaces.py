@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
-from app.access import DEFAULT_ROLES, PERMISSIONS, Ctx, require, resolve
+from app.access import DEFAULT_ROLES, PERMISSIONS, Ctx, require, resolve, resolve_user
 from app.audit import record
 from app.auth import User, current_user, is_platform_owner
 from app.db import new_id, now
@@ -70,10 +70,10 @@ async def platform_archive(workspace_id: str, request: Request, _: User = Depend
 async def me(request: Request, user: User = Depends(current_user)):
     workspaces = []
     async for ws in request.app.state.db.workspaces.find({"archived": False}, sort=[("name", 1)]):
-        roles, perms = resolve(ws, user.groups)
+        roles, perms = resolve_user(ws, user, request.app.state.settings)
         if perms:
             workspaces.append({"id": ws["_id"], "name": ws["name"], "slug": ws["slug"],
-                               "roles": roles, "permissions": sorted(perms)})
+                               "roles": roles, "permissions": sorted(perms), "jira_connected": bool(ws.get("jira"))})
     return {"user": {"sub": user.sub, "name": user.name, "email": user.email,
                      "is_platform_owner": is_platform_owner(user, request.app.state.settings)},
             "workspaces": workspaces}

@@ -29,7 +29,7 @@ There is no sign-in screen yet. Until company login is connected, every request 
 
 ## Background worker
 
-Reminders and waiting-on nudges are sent by a second process, the same image with a different command:
+Reminders, waiting-on nudges and the 9:00 Teams digest are sent by a second process, the same image with a different command:
 
 ```bash
 cd backend && uv run python -m app.worker   # every 60 s; safe to run several replicas
@@ -42,7 +42,9 @@ OpenShift: `deploy/openshift/worker.yaml`. Without it, nothing fires. Delivery i
 1. Start the API with a `DEV_USER_GROUPS` value that includes the platform owner group (`teamdesk-platform-owners` by default).
 2. Open the app, choose **Create a workspace**, and give it a name and an admin group, for example `grp-data-admins`.
 3. Restart as someone in that admin group. Go to **Settings → Members and roles** and map your other groups to roles, for example `grp-data-eng → Member` and `grp-data-approvers → Approver`.
-4. Every new workspace starts with four task types (Story, Bug, Spike, Tech debt) and the rule **Developer tasks skip the queue**. Adjust both under Settings.
+4. To create Jira issues from approved tasks, go to **Settings → Connections**, choose Cloud (account email + API token) or Data Center (personal access token), enter the address and project key, then **Test connection**. Tokens are encrypted with a key derived from `SESSION_SECRET`, so changing that secret means re-entering them.
+5. Each person can get reminders in Teams: in Teams open **Workflows → Send webhook alerts to a chat**, pick themselves, and paste the link under **My settings → Teams reminders**.
+6. Every new workspace starts with four task types (Story, Bug, Spike, Tech debt) and the rule **Developer tasks skip the queue**. Adjust both under Settings.
 
 ## Keyboard
 
@@ -66,7 +68,7 @@ All settings are environment variables (upper-case names). Per-team settings liv
 | `SESSION_SECRET` | required | Signs session cookies. At least 32 random characters (the API refuses to start otherwise) |
 | `SESSION_MAX_AGE` | `28800` | Session lifetime in seconds |
 | `HTTPS_ONLY_COOKIES` | `true` | Set `false` only for local HTTP |
-| `PLATFORM_OWNER_GROUP` | `teamdesk-platform-owners` | Group allowed to create and archive workspaces |
+| `PLATFORM_OWNER_GROUP` | `teamdesk-platform-owners` | Group allowed to create and archive workspaces; its members are also admins in every workspace (never in anyone's private space) |
 | `DEV_USER_SUB`, `DEV_USER_NAME`, `DEV_USER_EMAIL`, `DEV_USER_GROUPS` | empty | Interim identity for requests without a session. Groups are comma-separated. **Leave empty in any shared environment** |
 | `DEV_LOGIN_ENABLED` | `false` | Enables `POST /api/auth/dev-login`, used by automated tests and scripts only |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | empty, `587` | Email notifications. Email is off when `SMTP_HOST` is empty |

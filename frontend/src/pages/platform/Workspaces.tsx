@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
@@ -18,6 +18,7 @@ const SLUG = /^[a-z0-9-]{2,40}$/
 
 export function Workspaces() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const list = useQuery({ queryKey: qk.platform, queryFn: () => api<PlatformWorkspace[]>('/api/platform/workspaces') })
   const [creating, setCreating] = useState(false)
   const [archiving, setArchiving] = useState<PlatformWorkspace | null>(null)
@@ -31,7 +32,13 @@ export function Workspaces() {
   const create = useMutation({
     mutationFn: () => api<PlatformWorkspace>('/api/platform/workspaces', { method: 'POST', json: { name, slug, admin_group: group } }),
     onMutate: () => setError(''),
-    onSuccess: (w) => { after(); setCreating(false); setName(''); setSlug(''); setSlugTouched(false); setGroup(''); toast.success(`${w.name} created`) },
+    onSuccess: async (w) => {
+      qc.invalidateQueries({ queryKey: qk.platform })
+      await qc.refetchQueries({ queryKey: qk.me })
+      setCreating(false); setName(''); setSlug(''); setSlugTouched(false); setGroup('')
+      toast.success(`${w.name} created`)
+      navigate(`/w/${w.id}/tasks`)
+    },
     onError: (e) => setError(e.message),
   })
   const archive = useMutation({
@@ -42,9 +49,8 @@ export function Workspaces() {
 
   const active = list.data?.filter((w) => !w.archived) ?? []
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-4xl bg-background">
+    <div className="mx-auto w-full max-w-4xl">
       <PageHeader title="Workspaces">
-        <Button variant="ghost" render={<Link to="/" />}>Back to TeamDesk</Button>
         <Button onClick={() => setCreating(true)}><Plus />Create workspace</Button>
       </PageHeader>
       <p className="-mt-2 px-6 pb-4 text-muted-foreground">Each team gets its own workspace. Teams never see each other's tasks or settings.</p>
@@ -58,6 +64,8 @@ export function Workspaces() {
                 <p className="font-medium">{w.name}</p>
                 <p className="text-muted-foreground">{w.slug}. Admin groups: {w.admin_groups.join(', ') || 'none'}</p>
               </div>
+              <Button variant="outline" size="sm" render={<Link to={`/w/${w.id}/tasks`} />}>Open</Button>
+              <Button variant="outline" size="sm" render={<Link to={`/w/${w.id}/settings`} />}>Settings</Button>
               <Button variant="ghost" size="sm" onClick={() => setArchiving(w)}>Archive</Button>
             </li>
           ))}
@@ -109,6 +117,6 @@ export function Workspaces() {
           </DialogContent>
         )}
       </Dialog>
-    </main>
+    </div>
   )
 }

@@ -8,6 +8,50 @@ import { api } from '@/lib/api'
 import { qk, useProfile } from '@/lib/queries'
 import type { Profile } from '@/lib/types'
 
+function TeamsReminders({ open }: { open: boolean }) {
+  const qc = useQueryClient()
+  const key = ['me', 'teams']
+  const state = useQuery({ queryKey: key, queryFn: () => api<{ connected: boolean }>('/api/me/teams'), enabled: open })
+  const [link, setLink] = useState('')
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const save = useMutation({
+    mutationFn: () => api<{ connected: boolean }>('/api/me/teams', { method: 'PUT', json: { url: link.trim() } }),
+    onSuccess: (r) => { qc.setQueryData(key, r); setLink(''); setResult(null) },
+    onError: (e) => setResult({ ok: false, message: e.message }),
+  })
+  const test = useMutation({
+    mutationFn: () => api<{ ok: boolean; message: string }>('/api/me/teams/test', { method: 'POST' }),
+    onSuccess: setResult,
+    onError: (e) => setResult({ ok: false, message: e.message }),
+  })
+  const remove = useMutation({
+    mutationFn: () => api('/api/me/teams', { method: 'DELETE' }),
+    onSuccess: () => { qc.setQueryData(key, { connected: false }); setResult(null) },
+  })
+  return (
+    <div>
+      <dt className="font-medium">Teams reminders</dt>
+      <dd className="space-y-2 text-muted-foreground">
+        <p>Get your reminders, follow-ups and a 9:00 summary of your day in a Teams chat. In Teams, open Workflows, pick
+          "Send webhook alerts to a chat", choose yourself, and paste the link it gives you here.</p>
+        {state.data?.connected ? (
+          <div className="flex flex-wrap gap-2">
+            <span className="mr-auto self-center text-foreground">Connected</span>
+            <Button variant="outline" size="sm" disabled={test.isPending} onClick={() => test.mutate()}>Send a test</Button>
+            <Button variant="ghost" size="sm" onClick={() => remove.mutate()}>Disconnect</Button>
+          </div>
+        ) : (
+          <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); save.mutate() }}>
+            <Input aria-label="Teams workflow link" type="url" placeholder="https://…logic.azure.com/workflows/…" value={link} onChange={(e) => setLink(e.target.value)} />
+            <Button type="submit" size="sm" className="h-9" disabled={!link.trim() || save.isPending}>Connect</Button>
+          </form>
+        )}
+        {result && <p role="status" className={result.ok ? 'text-foreground' : 'text-destructive'}>{result.message}</p>}
+      </dd>
+    </div>
+  )
+}
+
 export function ProfileDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const qc = useQueryClient()
   const profile = useProfile()
@@ -51,6 +95,7 @@ export function ProfileDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                 </Button>
               </dd>
             </div>
+            <TeamsReminders open={open} />
           </dl>
         )}
       </DialogContent>

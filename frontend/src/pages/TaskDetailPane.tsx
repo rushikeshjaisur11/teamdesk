@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Send, X } from 'lucide-react'
+import { Pencil, Send, SquareArrowOutUpRight, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { TaskProgress } from '@/components/TaskProgress'
@@ -31,6 +31,8 @@ function describe(a: Activity) {
     case 'auto_approved': return `submitted it and it was approved automatically by "${a.data.rule}"`
     case 'decision': return DECISION_WORDS[a.data.action as string] ?? String(a.data.action)
     case 'comment': return 'commented'
+    case 'jira_created': return `created Jira issue ${a.data.key}`
+    case 'jira_failed': return `tried to create the Jira issue: ${a.data.error}`
   }
 }
 
@@ -38,7 +40,7 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
   wid: string; taskId: string; templates: Template[]; onClose?: () => void; readOnly?: boolean
 }) {
   const qc = useQueryClient()
-  const { me, can } = useWorkspace()
+  const { me, ws, can } = useWorkspace()
   const task = useTask(wid, taskId)
   const activity = useActivity(wid, taskId)
   const [comment, setComment] = useState('')
@@ -65,6 +67,12 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
     onError: (e) => toast.error(e.message),
   })
 
+  const jira = useMutation({
+    mutationFn: () => api<{ jira_key: string }>(wpath(wid, `/tasks/${taskId}/jira`), { method: 'POST' }),
+    onSuccess: (r) => { refresh(); toast.success(`Created ${r.jira_key}`) },
+    onError: (e) => { refresh(); toast.error(e.message) },
+  })
+
   if (task.isPending) {
     return <div className="space-y-4 p-6"><Skeleton className="h-6 w-2/3" /><Skeleton className="h-4 w-1/3" /><Skeleton className="h-24 w-full" /></div>
   }
@@ -89,7 +97,11 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 pt-4 text-muted-foreground">
         <StatusBadge status={t.status} />
         <span title={new Date(t.updated_at).toLocaleString()}>Updated {ago(t.updated_at)}</span>
+        {t.jira_key && (t.jira_url
+          ? <a className="task-id text-foreground underline underline-offset-2" href={t.jira_url} target="_blank" rel="noreferrer">{t.jira_key}</a>
+          : <span className="task-id text-foreground">{t.jira_key}</span>)}
       </div>
+      {t.status === 'jira_failed' && t.jira_error && <p role="alert" className="mx-6 mt-3 text-destructive">{t.jira_error}</p>}
       <TaskProgress task={t} />
 
       {t.decision?.reason && (
@@ -103,6 +115,12 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
         {mayEdit && EDITABLE.includes(t.status) && <Button variant="outline" onClick={() => setEditing(true)}><Pencil />Edit</Button>}
         {mayEdit && ['draft', 'changes_requested'].includes(t.status) && (
           <Button onClick={() => submit.mutate()} disabled={submit.isPending}><Send />Submit for approval</Button>
+        )}
+        {!readOnly && ws?.jira_connected && !t.jira_key && ['approved', 'jira_failed'].includes(t.status)
+          && (t.author.sub === me?.user.sub || can('task.approve')) && (
+          <Button onClick={() => jira.mutate()} disabled={jira.isPending}>
+            <SquareArrowOutUpRight />{jira.isPending ? 'Creating' : t.status === 'jira_failed' ? 'Retry Jira' : 'Create Jira issue'}
+          </Button>
         )}
         {!readOnly && <RemindTask wid={wid} task={t} />}
       </div>

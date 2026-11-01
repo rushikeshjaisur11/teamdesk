@@ -14,14 +14,18 @@ import { useShortcut } from '@/lib/useShortcut'
 type Action = { id: string; label: string; icon: typeof Inbox; run: () => void; shortcut?: string }
 
 /** Ctrl/⌘ K: find tasks (by words or #number), jump to a page, or run a command. */
-export function CommandPalette({ onNewTask, onCapture }: { onNewTask?: () => void; onCapture?: () => void }) {
+export function CommandPalette({ onNewTask, onCapture, open: controlled, onOpenChange }: {
+  onNewTask?: () => void; onCapture?: () => void; open?: boolean; onOpenChange?: (open: boolean) => void
+}) {
   const { wid, me, can } = useWorkspace()
   const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
+  const [own, setOwn] = useState(false)
+  const open = controlled ?? own
+  const setOpen = onOpenChange ?? setOwn
   const [text, setText] = useState('')
   const query = useDebounced(text.trim(), 250)
   const number = /^#?(\d+)$/.exec(query)?.[1]
-  useShortcut('mod+k', () => setOpen((o) => !o))
+  useShortcut('mod+k', () => setOpen(!open))
 
   const mine = useQuery({
     queryKey: qk.items({ palette: query }),

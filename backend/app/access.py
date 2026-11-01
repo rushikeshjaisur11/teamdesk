@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from fastapi import BackgroundTasks, Depends, HTTPException, Request
 
-from app.auth import User, current_user
+from app.auth import User, current_user, is_platform_owner
 from app.config import Settings
 from app.scoped import Scoped
 
@@ -26,6 +26,14 @@ def resolve(workspace: dict, groups: list[str]) -> tuple[list[str], set[str]]:
     return matched, perms
 
 
+def resolve_user(workspace: dict, user: User, settings: Settings) -> tuple[list[str], set[str]]:
+    """Platform owners create and archive workspaces, so they can also open and fix any of them."""
+    roles, perms = resolve(workspace, user.groups)
+    if is_platform_owner(user, settings):
+        return roles or ["admin"], set(PERMISSIONS)
+    return roles, perms
+
+
 @dataclass
 class Ctx:
     user: User
@@ -44,7 +52,7 @@ async def workspace_ctx(workspace_id: str, request: Request, background: Backgro
                         user: User = Depends(current_user)) -> Ctx:
     db = request.app.state.db
     ws = await db.workspaces.find_one({"_id": workspace_id, "archived": False})
-    roles, perms = resolve(ws, user.groups) if ws else ([], set())
+    roles, perms = resolve_user(ws, user, request.app.state.settings) if ws else ([], set())
     if not perms:
         raise HTTPException(404, "Workspace not found.")
     return Ctx(user, ws, roles, perms, Scoped(db, workspace_id), request.app.state.settings, background)

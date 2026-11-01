@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Building2, CalendarCheck, Hourglass, Inbox, Keyboard, ListChecks, ListTodo, Moon, Settings, Stamp, Sun, UserCog } from 'lucide-react'
+import { Building2, CalendarCheck, Hourglass, Inbox, Keyboard, Lightbulb, ListChecks, ListTodo, Moon, Search, Settings, Stamp, Sun, UserCog } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Outlet, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
@@ -29,6 +29,7 @@ export function AppLayout() {
   const [theme, setT] = useState(currentTheme())
   const [help, setHelp] = useState(false)
   const [capture, setCapture] = useState(false)
+  const [search, setSearch] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const approvals = useApprovalCount(wid, can('task.approve'))
   const ideas = useItems({ kind: 'idea' })
@@ -70,9 +71,9 @@ export function AppLayout() {
         ...(can('task.approve') ? [{ to: `/w/${wid}/approvals`, label: 'Approvals', icon: Stamp, count: approvals.data?.count }] : []),
         ...(can('settings.manage') ? [{ to: `/w/${wid}/settings`, label: 'Settings', icon: Settings }] : []),
       ],
-    }] : me.user.is_platform_owner ? [{ label: 'Team', items: [{ to: '/platform/workspaces', label: 'Create a workspace', icon: Building2 }] }] : []),
+    }] : []),
+    ...(me.user.is_platform_owner ? [{ label: 'Admin', items: [{ to: '/platform/workspaces', label: 'Workspaces', icon: Building2 }] }] : []),
   ]
-
   const toggleTheme = () => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); setT(t) }
   const iconButton = (label: string, onClick: () => void, icon: ReactNode) => (
     <Tooltip>
@@ -88,9 +89,8 @@ export function AppLayout() {
           compact={compact}
           sections={compact ? sections.map((s) => ({ items: s.items })) : sections}
           header={
-            <div className={compact ? 'flex justify-center' : 'flex items-center justify-between pl-1'}>
+            <div className={compact ? 'flex justify-center' : 'flex items-center pl-1'}>
               <BrandMark withName={!compact} />
-              {!compact && <NotificationBell wid={ws ? wid : ''} />}
             </div>
           }
           footer={
@@ -103,12 +103,30 @@ export function AppLayout() {
           }
         />
       )}
+      topbar={
+        <>
+          {ws && (
+            <button type="button" onClick={() => setSearch(true)}
+              className="hidden h-9 w-full max-w-sm items-center gap-2 rounded-md border border-input bg-card px-3 text-muted-foreground transition-colors hover:text-foreground sm:flex">
+              <Search className="size-4" /><span className="flex-1 text-left">Search tasks or jump to a page</span>
+              <kbd className="rounded border bg-muted px-1.5 text-xs">Ctrl K</kbd>
+            </button>
+          )}
+          <div className="ml-auto flex items-center gap-1">
+            {ws && <Button variant="ghost" size="icon" className="sm:hidden" aria-label="Search" onClick={() => setSearch(true)}><Search /></Button>}
+            <Button variant="outline" onClick={() => setCapture(true)}>
+              <Lightbulb />Capture<kbd className="ml-1 hidden text-xs text-muted-foreground sm:inline">I</kbd>
+            </Button>
+            <NotificationBell wid={ws ? wid : ''} />
+          </div>
+        </>
+      }
     >
       <Outlet />
       <ShortcutSheet open={help} onOpenChange={setHelp} />
       <ProfileDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <QuickCapture open={capture} onOpenChange={setCapture} />
-      {ws && <CommandPalette onNewTask={() => navigate(`/w/${wid}/tasks?new=1`)} onCapture={() => setCapture(true)} />}
+      {ws && <CommandPalette open={search} onOpenChange={setSearch} onNewTask={() => navigate(`/w/${wid}/tasks?new=1`)} onCapture={() => setCapture(true)} />}
     </AppShell>
   )
 }

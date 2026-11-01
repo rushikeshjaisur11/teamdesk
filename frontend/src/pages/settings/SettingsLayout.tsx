@@ -4,24 +4,25 @@ import { PageHeader } from '@/components/PageHeader'
 import { useWorkspace } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 import { Audit } from './Audit'
+import { Connections } from './Connections'
 import { General } from './General'
 import { Members } from './Members'
 import { Rules } from './Rules'
 import { Templates } from './Templates'
 
 const PAGES = [
-  ['general', 'General'], ['members', 'Members and roles'], ['templates', 'Task types'],
-  ['rules', 'Auto-approve rules'], ['audit', 'Audit log'],
+  ['general', 'General', 'settings.manage'], ['members', 'Members and roles', 'roles.manage'], ['templates', 'Task types', 'settings.manage'],
+  ['rules', 'Auto-approve rules', 'settings.manage'], ['connections', 'Connections', 'connections.manage'], ['audit', 'Audit log', 'settings.manage'],
 ] as const
 
 export function SettingsLayout() {
-  const { wid } = useWorkspace()
+  const { wid, can } = useWorkspace()
   return (
     <div className="mx-auto w-full max-w-6xl">
       <PageHeader title="Settings" />
       <div className="flex flex-col gap-6 px-6 pb-10 md:flex-row">
         <nav aria-label="Settings" className="flex shrink-0 gap-1 overflow-x-auto md:w-52 md:flex-col">
-          {PAGES.map(([path, label]) => (
+          {PAGES.filter(([, , perm]) => can(perm)).map(([path, label]) => (
             <NavLink key={path} to={`/w/${wid}/settings/${path}`} className={({ isActive }) => cn(
               'rounded-md px-3 py-1.5 whitespace-nowrap text-muted-foreground hover:bg-accent/60 hover:text-foreground',
               isActive && 'bg-accent text-foreground')}>
@@ -36,6 +37,7 @@ export function SettingsLayout() {
             <Route path="members" element={<Members />} />
             <Route path="templates" element={<Templates />} />
             <Route path="rules" element={<Rules />} />
+            <Route path="connections" element={<Connections />} />
             <Route path="audit" element={<Audit />} />
           </Routes>
         </div>

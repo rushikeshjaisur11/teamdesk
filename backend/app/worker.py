@@ -1,10 +1,11 @@
-"""Background worker: `python -m app.worker`. Fires due reminders and waiting-on nudges.
+"""Background worker: `python -m app.worker`. Fires due reminders, waiting-on nudges and the 9:00 Teams digest.
 
 Safe with several replicas: each item is claimed with find_one_and_update (sets fired_at / nudge_fired_at)
 before anything is sent, so delivery is at most once. Email failures are logged, not retried."""
 import asyncio
 import logging
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from pymongo import AsyncMongoClient
 
@@ -14,9 +15,11 @@ from app.db import ensure_indexes, new_id, now
 from app.my_time import today_for
 from app.notifications import send_email
 from app.scoped import Scoped
+from app.teams import notify_user
 
 log = logging.getLogger(__name__)
 INTERVAL = 60
+DIGEST_HOUR = 9
 BATCH = 200
 NO_ACCESS = "A task you no longer have access to"
 
@@ -32,6 +35,7 @@ async def _deliver(db, settings: Settings, item: dict, kind: str, text: str, at:
                 await asyncio.to_thread(send_email, settings, user["email"], text, f"{text}\n\n{settings.public_url}/me/today")
             except Exception:
                 log.exception("Reminder email failed")
+    await notify_user(db, settings, item["owner_sub"], text, [])
 
 
 async def _reminder_text(db, item: dict) -> str:
@@ -80,9 +84,31 @@ async def fire_nudges(db, settings: Settings, at: datetime) -> int:
     return n
 
 
+async def fire_digests(db, settings: Settings, at: datetime) -> int:
+    """Once a day after 9:00 in each person's time zone: what's pinned, due or overdue, sent to their Teams chat."""
+    n = 0
+    async for user in db.users.find({"teams_webhook": {"$exists": True}}):
+        tz = user.get("tz", "UTC")
+        local = at.astimezone(ZoneInfo(tz))
+        d = local.date().isoformat()
+        if local.hour < DIGEST_HOUR or user.get("digest_on") == d:
+            continue
+        if not await db.users.find_one_and_update({"_id": user["_id"], "digest_on": {"$ne": d}}, {"$set": {"digest_on": d}}):
+            continue
+        items = [i async for i in db.personal_items.find(
+            {"owner_sub": user["_id"], "status": "open", "kind": "task",
+             "$or": [{"today_on": d}, {"due_on": {"$lte": d}}]}, sort=[("due_on", 1)], limit=10)]
+        if items:
+            lines = [f"{i['title']}{' (overdue)' if (i.get('due_on') or d) < d else ''}" for i in items]
+            await notify_user(db, settings, user["_id"], f"Your day: {len(items)} {'task' if len(items) == 1 else 'tasks'}", lines)
+            n += 1
+    return n
+
+
 async def run_once(db, settings: Settings, at: datetime | None = None) -> dict:
     at = at or now()
-    return {"reminders": await fire_reminders(db, settings, at), "nudges": await fire_nudges(db, settings, at)}
+    return {"reminders": await fire_reminders(db, settings, at), "nudges": await fire_nudges(db, settings, at),
+            "digests": await fire_digests(db, settings, at)}
 
 
 async def main() -> None:

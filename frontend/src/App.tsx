@@ -30,7 +30,9 @@ export default function App() {
         <Route path="settings/*" element={<SettingsLayout />} />
       </Route>
       <Route path="/share" element={<ShareTarget />} />
-      <Route path="/platform/workspaces" element={<Workspaces />} />
+      <Route path="/platform" element={<AppLayout />}>
+        <Route path="workspaces" element={<Workspaces />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
