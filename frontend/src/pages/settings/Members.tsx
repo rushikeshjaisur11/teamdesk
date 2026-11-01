@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { api } from '@/lib/api'
+import { formatDay } from '@/lib/days'
 import { qk, useWorkspace, wpath } from '@/lib/queries'
 import { PERMISSIONS, type GroupMapping, type Member, type RoleDef, type WorkspaceSettings } from '@/lib/types'
 import { Section } from './SettingsLayout'
@@ -99,6 +100,7 @@ export function Members() {
               <li key={p.sub} className="flex flex-wrap items-center gap-x-4 py-2">
                 <span className="font-medium">{p.name}</span>
                 <span className="text-muted-foreground">{p.email}</span>
+                {p.away_until && <span className="rounded-sm px-1.5 py-0.5 text-xs" style={{ backgroundColor: 'var(--pill-warning-bg)', color: 'var(--pill-warning-ink)' }}>Away until {formatDay(p.away_until)}</span>}
                 <span className="ml-auto text-muted-foreground">{p.roles.map((r) => roles[r]?.name ?? r).join(', ')}</span>
               </li>
             ))}

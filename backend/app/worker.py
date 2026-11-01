@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 from pymongo import AsyncMongoClient
 
 from app.access import resolve
+from app.away import away_now
 from app.config import Settings
 from app.jira import sync_statuses
 from app.db import ensure_indexes, new_id, now
@@ -92,7 +93,7 @@ async def fire_digests(db, settings: Settings, at: datetime) -> int:
         tz = user.get("tz", "UTC")
         local = at.astimezone(ZoneInfo(tz))
         d = local.date().isoformat()
-        if local.hour < DIGEST_HOUR or user.get("digest_on") == d:
+        if local.hour < DIGEST_HOUR or user.get("digest_on") == d or away_now(user, at):  # no digest while out of office
             continue
         if not await db.users.find_one_and_update({"_id": user["_id"], "digest_on": {"$ne": d}}, {"$set": {"digest_on": d}}):
             continue

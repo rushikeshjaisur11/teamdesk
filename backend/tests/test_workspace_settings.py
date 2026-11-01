@@ -70,5 +70,5 @@ async def test_members_lists_seen_users_with_roles(make_client):
     m = await make_client(); await login(m, "dev", ["g-dev"], name="Dev One")
     stranger = await make_client(); await login(stranger, "zed", ["g-other"])
     members = (await m.get(f"/api/w/{wid}/members")).json()
-    assert members == [{"sub": "adm", "name": "Adm", "email": "adm@example.com", "roles": ["admin"]},
-                       {"sub": "dev", "name": "Dev One", "email": "dev@example.com", "roles": ["member"]}]
+    assert members == [{"sub": "adm", "name": "Adm", "email": "adm@example.com", "roles": ["admin"], "away_until": None},
+                       {"sub": "dev", "name": "Dev One", "email": "dev@example.com", "roles": ["member"], "away_until": None}]

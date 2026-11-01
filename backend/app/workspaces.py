@@ -8,6 +8,7 @@ from pymongo.errors import DuplicateKeyError
 from app import ai
 from app.access import DEFAULT_ROLES, PERMISSIONS, Ctx, require, resolve, resolve_user
 from app.audit import record
+from app.away import away_now
 from app.auth import User, current_user, is_platform_owner
 from app.db import new_id, now
 from app.rules import seed_rules
@@ -161,5 +162,7 @@ async def members(ctx: Ctx = Depends(require("task.view"))):
     async for u in ctx.scoped.db.users.find({}, sort=[("name", 1)]):
         roles, _ = resolve(ctx.workspace, u.get("groups", []))
         if roles:
-            result.append({"sub": u["_id"], "name": u.get("name", ""), "email": u.get("email", ""), "roles": roles})
+            away = away_now(u, now())
+            result.append({"sub": u["_id"], "name": u.get("name", ""), "email": u.get("email", ""), "roles": roles,
+                           "away_until": away["to"] if away else None})
     return result

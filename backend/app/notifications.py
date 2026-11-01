@@ -5,7 +5,8 @@ from email.message import EmailMessage
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel
 
-from app.access import Ctx, require, resolve
+from app.access import Ctx, require
+from app.away import route_approvers
 from app.config import Settings
 from app.db import now
 from app.scoped import out
@@ -35,11 +36,8 @@ def send_email(settings: Settings, to: str, subject: str, body: str) -> None:
 
 
 async def approver_subs(ctx: Ctx) -> list[str]:
-    subs = []
-    async for u in ctx.scoped.db.users.find({}):
-        if "task.approve" in resolve(ctx.workspace, u.get("groups", []))[1]:
-            subs.append(u["_id"])
-    return subs
+    """Who to ask for approval: the workspace's approvers, with anyone away replaced by their backup."""
+    return route_approvers([u async for u in ctx.scoped.db.users.find({})], ctx.workspace, now())
 
 
 async def notify(ctx: Ctx, user_subs: list[str], kind: str, task: dict, text: str) -> None:

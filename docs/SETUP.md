@@ -10,7 +10,7 @@ This guide covers everything needed to run TeamDesk and connect it to Jira and M
 6. [Workspace settings](#6-workspace-settings)
 7. [Connector: Jira](#7-connector-jira)
 8. [Connector: Microsoft Teams channel](#8-connector-microsoft-teams-channel)
-9. [Personal Teams reminders](#9-personal-teams-reminders)
+9. [My settings: Teams reminders and Out of office](#9-my-settings-teams-reminders-and-out-of-office)
 10. [AI](#10-ai)
 11. [Docs space](#11-docs-space)
 12. [Meeting notes](#12-meeting-notes)
@@ -259,9 +259,11 @@ The workflow posts as the person who created it. If that person leaves the compa
 
 Click **Connect Teams**, then **Send a test**; a card should appear in the channel. Each card has the update, the task title and an **Open TeamDesk** button. If it fails, TeamDesk shows Teams' answer. A 4xx answer usually means the workflow was turned off or deleted.
 
-## 9. Personal Teams reminders
+## 9. My settings: Teams reminders and Out of office
 
-**Where:** your name at the bottom left → **My settings** → **Teams reminders**. **Who:** each person, for themselves.
+**Where:** the person icon next to your name at the bottom left → **My settings**. **Who:** each person, for themselves.
+
+### Teams reminders
 
 1. In Teams, open **Workflows** (from the left bar, or **⋯** in your chat with yourself).
 2. Pick **Send webhook alerts to a chat**, choose your own chat, and click **Add workflow**.
@@ -273,6 +275,23 @@ From then on, your Teams chat gets:
 - at 9:00 in your time zone, a summary of your pinned, due and overdue tasks.
 
 These come from the background worker, so they stop if it isn't running. Only you can see or change your link.
+
+### Out of office
+
+Click **Set out of office** and fill in:
+
+| Field | What to fill in |
+|---|---|
+| **First day away** / **Last day away** | Your dates, inclusive, in your time zone. |
+| **Backup for approvals** | Someone who can already approve in your workspaces; the list shows where each person can approve. Leave it empty to let the other approvers cover. |
+| **Note for teammates** | Optional, for example "Back Monday, urgent: ask Sam". |
+
+While you're away:
+- approval requests go to your backup instead of you. If the backup can't approve in that workspace, or is away too, the other approvers are asked. If nobody is left, everyone who can approve is asked, so a request is never lost.
+- **Settings → Members and roles** shows "Away until …" next to your name.
+- your 9:00 Teams summary pauses.
+
+Out of office never gives anyone new rights: your backup approves with their own role. Click **I'm back** to end it early.
 
 ## 10. AI
 
