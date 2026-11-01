@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, StringConstraints, field_validator
@@ -45,6 +45,7 @@ class Section(BaseModel):
     label: str = Field(min_length=1, max_length=80)
     required: bool = False
     hint: str = Field("", max_length=300)
+    jira_field: str = Field("", pattern=r"^([a-z]+|customfield_\d+)?$", max_length=40)  # empty: goes into the description
 
 
 class TemplateBody(BaseModel):
@@ -52,6 +53,8 @@ class TemplateBody(BaseModel):
     jira_issue_type: str = Field(min_length=1, max_length=80)
     sections: list[Section] = Field(min_length=1, max_length=20)
     default_labels: list[Annotated[str, StringConstraints(pattern=r"^\S{1,50}$")]] = []
+    jira_project_key: str = Field("", pattern=r"^([A-Z][A-Z0-9_]{1,19})?$")  # empty: the connection's project
+    jira_extra_fields: dict[str, Any] = Field(default_factory=dict, max_length=30)  # merged into the Jira "fields", e.g. components
 
     @field_validator("sections")
     @classmethod

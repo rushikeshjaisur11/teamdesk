@@ -5,10 +5,12 @@ from email.message import EmailMessage
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel
 
-from app.access import Ctx, require, resolve
+from app.access import Ctx, require
+from app.away import route_approvers
 from app.config import Settings
 from app.db import now
 from app.scoped import out
+from app.teams import post_workspace
 
 log = logging.getLogger(__name__)
 
@@ -34,11 +36,8 @@ def send_email(settings: Settings, to: str, subject: str, body: str) -> None:
 
 
 async def approver_subs(ctx: Ctx) -> list[str]:
-    subs = []
-    async for u in ctx.scoped.db.users.find({}):
-        if "task.approve" in resolve(ctx.workspace, u.get("groups", []))[1]:
-            subs.append(u["_id"])
-    return subs
+    """Who to ask for approval: the workspace's approvers, with anyone away replaced by their backup."""
+    return route_approvers([u async for u in ctx.scoped.db.users.find({})], ctx.workspace, now())
 
 
 async def notify(ctx: Ctx, user_subs: list[str], kind: str, task: dict, text: str) -> None:
@@ -47,6 +46,8 @@ async def notify(ctx: Ctx, user_subs: list[str], kind: str, task: dict, text: st
         await ctx.scoped.col("notifications").insert(
             {"user_sub": sub, "kind": kind, "task_id": task["_id"], "text": text, "read": False, "created_at": now()})
     settings: Settings = ctx.settings
+    ctx.background.add_task(post_workspace, settings, ctx.workspace, kind, text, [task["title"]],
+                            f"/w/{ctx.scoped.workspace_id}/tasks/{task['_id']}")
     if not settings.smtp_host or not recipients:
         return
     link = f"{settings.public_url}/w/{ctx.scoped.workspace_id}/tasks/{task['_id']}"

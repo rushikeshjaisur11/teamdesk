@@ -7,31 +7,33 @@ export type Person = { sub: string; name: string }
 export type Me = {
   user: { sub: string; name: string; email: string; is_platform_owner: boolean }
   workspaces: WorkspaceSummary[]
+  ai_enabled?: boolean
 }
-export type WorkspaceSummary = { id: string; name: string; slug: string; roles: string[]; permissions: string[] }
+export type WorkspaceSummary = { id: string; name: string; slug: string; roles: string[]; permissions: string[]; jira_connected?: boolean }
 
 export type Decision = { action: string; by: Person; at: string; reason: string | null }
 export type Task = {
   id: string; number: number; type_key: string; title: string; fields: Record<string, string>; labels: string[]
   status: TaskStatus; author: Person & { email: string }; decision: Decision | null; duplicate_of: string | null
-  snoozed_until: string | null; jira_key: string | null; created_at: string; updated_at: string; submitted_at: string | null
+  snoozed_until: string | null; jira_key: string | null; jira_url?: string | null; jira_error?: string | null; jira_status?: string | null; created_at: string; updated_at: string; submitted_at: string | null
   checklist?: { id: string; text: string; done: boolean }[]
 }
 export type SimilarTask = Pick<Task, 'id' | 'number' | 'title' | 'status'>
 
-export type Section = { key: string; label: string; required: boolean; hint: string }
-export type Template = { id: string; key: string; name: string; jira_issue_type: string; sections: Section[]; default_labels: string[] }
+export type Section = { key: string; label: string; required: boolean; hint: string; jira_field?: string }
+export type Template = { id: string; key: string; name: string; jira_issue_type: string; sections: Section[]; default_labels: string[]; jira_project_key?: string; jira_extra_fields?: Record<string, unknown> }
 
 export type Idea = { id: string; owner_sub: string; text: string; promoted_task_id: string | null; created_at: string }
 export type Activity = {
   id: string; task_id: string; at: string; actor: Person
-  kind: 'created' | 'edited' | 'submitted' | 'decision' | 'comment' | 'auto_approved'
+  kind: 'created' | 'edited' | 'submitted' | 'decision' | 'comment' | 'auto_approved' | 'jira_created' | 'jira_failed' | 'jira_status' | 'jira_comment_failed'
   data: Record<string, unknown>
 }
 export type Rule = { id: string; name: string; enabled: boolean; type_keys: string[]; author_roles: string[]; labels_any: string[] }
 export type Notification = { id: string; user_sub: string; kind: string; task_id: string; text: string; read: boolean; created_at: string }
 export type PersonalNotification = { id: string; kind: 'reminder' | 'nudge'; text: string; item_id: string | null; read: boolean; created_at: string }
-export type Member = { sub: string; name: string; email: string; roles: string[] }
+export type Member = { sub: string; name: string; email: string; roles: string[]; away_until?: string | null }
+export type Away = { from: string; to: string; backup_sub: string | null; backup_name: string; note: string }
 export type AuditEntry = { id: string; at: string; actor: Person; action: string; target: string; data: Record<string, unknown> }
 export type RoleDef = { name: string; permissions: string[] }
 export type GroupMapping = { group: string; role: string }
@@ -60,3 +62,12 @@ export type Today = {
   approvals: { workspace_id: string; workspace_name: string; count: number }[]
 }
 export type Profile = { sub: string; name: string; email: string; tz: string; use_ai: boolean }
+export type DocFolder = { id: string; name: string; parent_id: string | null }
+export type Doc = { id: string; title: string; body: string; folder_id: string | null; version: number; updated_at: string; updated_by: Person }
+export type DocVersion = { id: string; version: number; title: string; body: string; saved_at: string; saved_by: Person }
+export type MeetingSummary = { id: string; title: string; series: string; date: string; created_by: Person }
+export type Meeting = MeetingSummary & {
+  notes: string; summary: string
+  proposed: { title: string; details: string; type_key: string; owner: string }[]
+  created: { id: string; number: number; title: string }[]
+}

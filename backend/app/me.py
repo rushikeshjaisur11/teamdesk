@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 
-from app.access import resolve
+from app.access import resolve_user
 from app.auth import User, current_user, remember_user
 from app.config import Settings
 from app.db import now
@@ -180,6 +180,8 @@ async def list_items(kind: Kind | None = None, status: Literal["open", "done", "
 
 @router.post("/items", status_code=201)
 async def create_item(body: NewItem, me: Me = Depends(personal)):
+    if body.link:
+        await require_task_access(me, body.link.workspace_id, body.link.task_id)
     fields = stored(body.model_dump(), me)
     t = now()
     doc = {"notes": "", "labels": [], "checklist": [], **{k: v for k, v in fields.items() if v is not None},
@@ -297,7 +299,7 @@ async def today_view(me: Me = Depends(personal)):
 
     sent_back, approvals = [], []
     async for ws in me.db.workspaces.find({"archived": False}, sort=[("name", 1)]):
-        _, perms = resolve(ws, me.user.groups)
+        _, perms = resolve_user(ws, me.user, me.settings)
         if not perms:
             continue
         tasks = Scoped(me.db, ws["_id"]).col("tasks")
@@ -340,7 +342,7 @@ class NoteBody(BaseModel):
 async def require_task_access(me: Me, workspace_id: str, task_id: str) -> None:
     """A private note hangs off a team task; you must still be able to open that task."""
     ws = await me.db.workspaces.find_one({"_id": workspace_id, "archived": False})
-    if not ws or "task.view" not in resolve(ws, me.user.groups)[1] \
+    if not ws or "task.view" not in resolve_user(ws, me.user, me.settings)[1] \
             or not await Scoped(me.db, workspace_id).col("tasks").find_one({"_id": task_id}):
         raise HTTPException(404, "Task not found.")
 

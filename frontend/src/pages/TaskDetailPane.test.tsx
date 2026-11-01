@@ -27,3 +27,14 @@ it('someone else sees the checklist read-only, and their own private note', asyn
   expect(await screen.findByRole('checkbox', { name: 'Write the retry' })).toHaveAttribute('aria-disabled', 'true')
   expect(screen.getByLabelText('My notes')).toBeInTheDocument()
 })
+
+it('a linked task shows its Jira key, opens it in Jira, and says comments go there too', async () => {
+  const meJira = me('dev', ['task.view', 'task.create'])
+  meJira.workspaces[0] = { ...meJira.workspaces[0], jira_connected: true } as never
+  mockApi({ ...base('dev', []), 'GET /api/auth/me': meJira,
+    'GET /api/w/w1/tasks/t1': makeTask({ status: 'in_jira', jira_key: 'DATA-7', jira_url: 'https://acme.atlassian.net/browse/DATA-7', jira_status: 'In Review' }) })
+  render()
+  expect(await screen.findByRole('link', { name: /Open DATA-7 in Jira/ })).toHaveAttribute('href', 'https://acme.atlassian.net/browse/DATA-7')
+  expect(screen.getByText(/In Review in Jira/)).toBeInTheDocument()
+  expect(screen.getByText(/Also added to DATA-7 in Jira/)).toBeInTheDocument()
+})

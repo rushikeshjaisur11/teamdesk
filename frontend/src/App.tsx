@@ -4,6 +4,8 @@ import { MyTasks } from '@/pages/me/MyTasks'
 import { Today } from '@/pages/me/Today'
 import { Waiting } from '@/pages/me/Waiting'
 import { Approvals } from '@/pages/Approvals'
+import { Docs } from '@/pages/Docs'
+import { Meetings } from '@/pages/Meetings'
 import { Home } from '@/pages/Home'
 import { ShareTarget } from '@/pages/ShareTarget'
 import { Workspaces } from '@/pages/platform/Workspaces'
@@ -27,10 +29,14 @@ export default function App() {
         <Route path="inbox" element={<Navigate to="/me/inbox" replace />} />
         <Route path="tasks/:taskId?" element={<Tasks />} />
         <Route path="approvals" element={<Approvals />} />
+        <Route path="docs/:docId?" element={<Docs />} />
+        <Route path="meetings/:meetingId?" element={<Meetings />} />
         <Route path="settings/*" element={<SettingsLayout />} />
       </Route>
       <Route path="/share" element={<ShareTarget />} />
-      <Route path="/platform/workspaces" element={<Workspaces />} />
+      <Route path="/platform" element={<AppLayout />}>
+        <Route path="workspaces" element={<Workspaces />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

@@ -40,11 +40,11 @@ async def test_owner_lists_workspaces(make_client):
     assert [w["slug"] for w in (await c.get("/api/platform/workspaces")).json()] == ["aa", "bb"]
 
 
-async def test_owner_without_mapping_cannot_open_workspace(make_client):
+async def test_owner_without_mapping_can_open_workspace(make_client):
     c = await make_client(); await login(c, "own", OWNER)
     wid = (await c.post("/api/platform/workspaces", json={"name": "A", "slug": "aa", "admin_group": "g"})).json()["id"]
-    r = await c.get(f"/api/w/{wid}/settings")
-    assert r.status_code == 404 and r.json()["detail"] == "Workspace not found."
+    assert [w["id"] for w in (await c.get("/api/auth/me")).json()["workspaces"]] == [wid]
+    assert (await c.get(f"/api/w/{wid}/settings")).status_code == 200
 
 
 async def test_archived_workspace_disappears(make_client):

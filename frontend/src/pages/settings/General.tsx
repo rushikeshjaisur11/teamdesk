@@ -33,12 +33,6 @@ export function General() {
           <Button type="submit" className="self-start" disabled={!name.trim() || name === settings.data?.name || save.isPending}>Save</Button>
         </form>
       </Section>
-      <Section title="Approvals" description="Approval is a compliance control, so these are fixed.">
-        <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-          <li>Approvers can't approve their own tasks.</li>
-          <li>Every decision and every automatic approval is written to the audit log.</li>
-        </ul>
-      </Section>
     </>
   )
 }

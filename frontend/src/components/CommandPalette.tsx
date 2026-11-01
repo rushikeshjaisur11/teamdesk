@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Building2, Inbox, Lightbulb, ListTodo, Moon, Plus, Settings, Stamp } from 'lucide-react'
+import { Building2, FileText, Inbox, Lightbulb, ListTodo, Moon, Plus, Settings, Stamp } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -7,21 +7,25 @@ import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, Comma
 import { api } from '@/lib/api'
 import { qk, useWorkspace, wpath } from '@/lib/queries'
 import { currentTheme, setTheme } from '@/lib/theme'
-import type { Item, Task } from '@/lib/types'
+import type { Doc, Item, Task } from '@/lib/types'
 import { useDebounced } from '@/lib/useDebounced'
 import { useShortcut } from '@/lib/useShortcut'
 
 type Action = { id: string; label: string; icon: typeof Inbox; run: () => void; shortcut?: string }
 
 /** Ctrl/⌘ K: find tasks (by words or #number), jump to a page, or run a command. */
-export function CommandPalette({ onNewTask, onCapture }: { onNewTask?: () => void; onCapture?: () => void }) {
+export function CommandPalette({ onNewTask, onCapture, open: controlled, onOpenChange }: {
+  onNewTask?: () => void; onCapture?: () => void; open?: boolean; onOpenChange?: (open: boolean) => void
+}) {
   const { wid, me, can } = useWorkspace()
   const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
+  const [own, setOwn] = useState(false)
+  const open = controlled ?? own
+  const setOpen = onOpenChange ?? setOwn
   const [text, setText] = useState('')
   const query = useDebounced(text.trim(), 250)
   const number = /^#?(\d+)$/.exec(query)?.[1]
-  useShortcut('mod+k', () => setOpen((o) => !o))
+  useShortcut('mod+k', () => setOpen(!open))
 
   const mine = useQuery({
     queryKey: qk.items({ palette: query }),
@@ -34,10 +38,18 @@ export function CommandPalette({ onNewTask, onCapture }: { onNewTask?: () => voi
     enabled: open && query.length > 0,
   })
 
+  const docs = useQuery({
+    queryKey: ['w', wid, 'docs', 'list', 'q', query],
+    queryFn: () => api<Doc[]>(wpath(wid, `/docs?q=${encodeURIComponent(query)}&limit=6`)),
+    enabled: open && query.length > 0 && !number,
+  })
+
   const close = () => { setOpen(false); setText('') }
   const go = (path: string) => { close(); navigate(path) }
   const actions: Action[] = [
     { id: 'tasks', label: 'Go to Tasks', icon: ListTodo, run: () => go(`/w/${wid}/tasks`) },
+    { id: 'docs', label: 'Go to Docs', icon: FileText, run: () => go(`/w/${wid}/docs`) },
+    ...(can('task.create') ? [{ id: 'meetings', label: 'Tasks from meeting notes', icon: FileText, run: () => go(`/w/${wid}/meetings`) }] : []),
     ...(can('task.create') ? [{ id: 'inbox', label: 'Go to Inbox', icon: Inbox, run: () => go(`/w/${wid}/inbox`) }] : []),
     ...(can('task.approve') ? [{ id: 'approvals', label: 'Go to Approvals', icon: Stamp, run: () => go(`/w/${wid}/approvals`) }] : []),
     ...(can('settings.manage') ? [{ id: 'settings', label: 'Go to Settings', icon: Settings, run: () => go(`/w/${wid}/settings`) }] : []),
@@ -64,6 +76,15 @@ export function CommandPalette({ onNewTask, onCapture }: { onNewTask?: () => voi
                   <span className="num w-10 text-muted-foreground">#{t.number}</span>
                   <span className="min-w-0 flex-1 truncate">{t.title}</span>
                   <StatusBadge status={t.status} />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {!!docs.data?.length && (
+            <CommandGroup heading="Docs">
+              {docs.data.map((d) => (
+                <CommandItem key={d.id} value={`doc-${d.id}`} onSelect={() => go(`/w/${wid}/docs/${d.id}`)}>
+                  <FileText /><span className="min-w-0 flex-1 truncate">{d.title}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

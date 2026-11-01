@@ -1,32 +1,55 @@
-# Where TeamDesk is, and what's next
+# TeamDesk: status and what's next
 
-Updated 2026-10-31. Read this first when resuming.
+Updated 2026-11-01. Read this first when resuming. The setup and admin guide is `docs/SETUP.md`; the product specs are in `specs/`.
 
-## Done
-- **Phase 1–2** (merged to `main`): workspaces, roles, team tasks, approvals, notifications, settings, deploy files. Plan: `plans/2026-10-31-teamdesk-foundation-and-tasks.md`. Final review done; fixes merged.
-- **UI redesign** with the taste skill (`.claude/skills/design-taste-frontend`, style "Achromatic ledger", seed 444112219). Tokens in `frontend/src/styles/tokens.css`. Every new screen follows `references/app-screens.md` and passes `inspect.mjs --app` with 0 FAIL.
-- **My space core** (branch `my-space`): all 10 tasks of `plans/2026-10-31-teamdesk-my-space-core.md` are complete.
-- **Final review of `main..my-space`** (done on `cloud/next-steps`): no privacy leaks found. Fixed with failing tests first: a profile PATCH could leave a `users` doc without `groups` (500 on members and on submit), PATCH with explicit `null` corrupted items, bad time zone names like `America` returned 500, roll-over items also showed under Due, reopening a completed recurring item spawned a duplicate. Tests in `backend/tests/test_final_review.py`.
-- **My space step 2, mostly** (`plans/2026-10-31-teamdesk-my-space-step2.md`, tasks 1-7 done): `remind_at` on items, `app/worker.py` (reminders, nudges, atomic claim, email), `personal_notifications` + `/api/me/notifications`, calendar feed (`app/calendar_feed.py`), `deploy/openshift/worker.yaml`, PWA manifest/service worker/share target (`/share`), reminders in the bell, "Remind me" in the task sheet, calendar link in My settings. Backend: 165 tests. Frontend: 65 tests.
+## Built
+
+| Area | What exists | Main files |
+|---|---|---|
+| Workspaces and roles | Isolated workspaces. Roles come from entitlement groups. Platform owners are admins in every workspace, but never in private spaces. | `access.py`, `workspaces.py`, `scoped.py` |
+| Team tasks | Templates, auto-approve rules, approval queue (self-approval blocked), checklists, comments, audit log, and an Archived group | `tasks.py`, `approvals.py`, `rules.py`, `templates.py` |
+| My space | Today, Inbox, My tasks, Waiting on, private notes, reminders, calendar feed, PWA share target | `me.py`, `calendar_feed.py` |
+| Out of office | Away dates and a backup. Approval requests go to the backup; members see "Away until"; the 9:00 summary pauses. | `away.py` |
+| Jira | Per-workspace connection (Cloud Basic / Data Center Bearer, encrypted). Create/Retry Jira; per-type template (project, extra fields, section to field); per-team status mapping synced by the worker; comments copied and tidied by AI. | `jira.py`, `crypto.py` |
+| Teams | Channel connector with chosen events; personal reminders and the 9:00 summary through each person's Workflows webhook | `teams.py` |
+| Docs | Folders, Markdown docs, search with snippets, version history, save conflict warning, templates | `docs.py`, `pages/Docs.tsx` |
+| Meeting notes | Grouped by series. Upload a transcript (.vtt/.docx/.txt/.md) to get an AI summary and proposed tasks; ticked tasks become drafts. | `meetings.py`, `ai.py` |
+| Excel | Import with column mapping (as drafts or submitted); export of the filtered task list | `excel.py`, `pages/ImportTasks.tsx` |
+| Worker | Reminders, nudges, Teams summary, Jira status sync; safe with several replicas | `worker.py` |
 
 ## Next, in order
-0. **Review and merge the `cloud/next-steps` PR** (it contains `my-space` plus the review fixes and step 2). Not merged by the automated run.
-2. **Finish My space step 2 (leftovers):**
-   - "Remind me" on a *team* task (creates a linked personal reminder item; the API already supports `link` + `remind_at`, the UI button is missing).
-   - Rate limit for the calendar feed is in-process (60/h per token per replica); move to Mongo if exact limits matter.
-   - Not verified: service worker/installability in a real browser, real SMTP delivery, worker under OpenShift. Icons are SVG only; some platforms want PNG 192/512.
-   - Minor review items left: team checklist PUT is last-write-wins and does not check duplicate ids (`tasks.py` put_checklist); the 3-pin limit is racy (documented); `Link` is not validated at item create.
-3. **My space step 3, AI:** spec §6.2, §6.10–6.14, §8. `backend/app/ai.py` holds every Vertex call. Config is env only: `AI_ENABLED`, `VERTEX_API_KEY`, `GEMINI_MODEL`, `EMBEDDING_MODEL`. Respect each user's `use_ai` switch.
-4. **Jira, optional per workspace:** main spec §7.5 as amended by my-space spec §9. Covers Cloud and Data Center.
-5. **Docs space:** main spec §7.7–7.9.
+
+1. **My space AI** (my-space spec §6.2, §6.10-6.14, §8). Add the features as functions in `ai.py`, respect each person's `use_ai` switch, and mock every call in tests.
+2. **Jira, the rest:**
+   - auto-create on approve when Jira is connected;
+   - background retry with backoff and an idempotency marker;
+   - a Jira webhook for faster status;
+   - the Jira mirror (own tickets; `jira.view_all` sees all);
+   - per-user Jira accounts;
+   - copying comments written before the issue existed.
+3. **Docs, the rest:** rich-text editor, images, doc-to-task links, Confluence import, "Ask the docs" with citations and the Missing docs list (main spec §7.9).
+4. **Company login** (SSO with entitlement groups) to replace `DEV_USER_*`. Needed before any shared rollout.
+5. **Smaller items:**
+   - Meeting notes: match suggested owners to members.
+   - Excel import: a Status column, and .csv.
+   - The calendar feed's rate limit is per replica.
+   - The 3-pin limit is racy.
+   - Icons are SVG only.
+   - PWA, SMTP and the worker are not verified on real OpenShift.
 
 ## Owner decisions to keep
-- No sign-in screen yet. The env default user is `DEV_USER_*`. Company login comes later through `sign_in()`.
-- Nobody can read another person's My space, admins included. Enforcement is in the app; there is no encryption at rest.
-- AI may read a person's own items only when their "Use AI on my space" switch is on (the default).
-- Developer tasks and tech tasks skip approval. Self-approval is always blocked (compliance).
-- MongoDB 8.0.26 replica set; OpenShift; GitHub Enterprise; Microsoft Teams (Workflows webhook).
-- Body text is 15px (the owner prefers larger type).
 
-## Running locally
-See `README.md`. Tests need `docker run -d -p 27018:27017 mongo:8.0`. `SESSION_SECRET` must be 32+ characters.
+- No sign-in screen yet; the stand-in user is `DEV_USER_*`.
+- Nobody can read another person's My space, admins included. Enforced in the app; no encryption at rest.
+- AI reads a person's own items only when their "Use AI on my space" switch is on (the default). AI is configured by env only, never in the UI.
+- Developer and tech tasks skip approval. Self-approval is always blocked (compliance). Out of office never lends approval rights; the backup must already be an approver.
+- Jira is optional per workspace. Both Cloud and Data Center must work.
+- Meeting transcripts are always uploaded by the user; TeamDesk does not connect to Teams to fetch them.
+- UI:
+  - every keyboard shortcut also has a button;
+  - quick actions live in the top bar, not the sidebar;
+  - hide settings people can't change;
+  - done work stays visible in a struck-through Archived group;
+  - body text is 15px.
+- Stack: MongoDB 8.0.26 replica set, OpenShift, GitHub Enterprise, Microsoft Teams (Workflows webhooks).
+- Every screen follows `.claude/skills/design-taste-frontend/references/app-screens.md` (style "Achromatic ledger") and passes `inspect.mjs --app` with 0 FAIL.

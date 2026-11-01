@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Plus, Search } from 'lucide-react'
+import { ChevronDown, Download, FileUp, Plus, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/PageHeader'
@@ -19,10 +19,13 @@ import type { Task, TaskStatus } from '@/lib/types'
 import { useDebounced } from '@/lib/useDebounced'
 import { useShortcut } from '@/lib/useShortcut'
 import { cn } from '@/lib/utils'
+import { ImportTasks } from './ImportTasks'
 import { TaskDetailPane } from './TaskDetailPane'
 import { TaskForm } from './TaskForm'
 
 const ORDER: TaskStatus[] = ['pending_approval', 'changes_requested', 'draft', 'approved', 'in_jira', 'jira_failed', 'in_progress', 'snoozed', 'done', 'rejected', 'duplicate']
+const ARCHIVED: TaskStatus[] = ['done', 'rejected', 'duplicate']
+type Group = TaskStatus | 'archived' | null
 
 /** The line under the title: what in this view needs someone's attention. */
 export function tasksFinding(tasks: Task[]) {
@@ -39,7 +42,7 @@ export function tasksFinding(tasks: Task[]) {
 }
 
 export function Tasks() {
-  const { wid, can } = useWorkspace()
+  const { wid, ws, can } = useWorkspace()
   const { taskId } = useParams()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -50,6 +53,7 @@ export function Tasks() {
   const [type, setType] = useState('')
   const [grouped, setGrouped] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [importing, setImporting] = useState(false)
   const query = useDebounced(q.trim(), 250)
   const fromItem = params.get('fromItem') ?? undefined
   const wantsNew = params.has('new')
@@ -64,11 +68,15 @@ export function Tasks() {
 
   const groups = useMemo(() => {
     const list = tasks.data ?? []
-    if (!grouped || query) return [[null, list] as const]
-    return ORDER.map((s) => [s, list.filter((t) => t.status === s)] as const).filter(([, ts]) => ts.length)
+    if (!grouped || query) return [[null as Group, list] as const]
+    return [
+      ...ORDER.filter((s) => !ARCHIVED.includes(s)).map((s) => [s as Group, list.filter((t) => t.status === s)] as const),
+      ['archived' as Group, list.filter((t) => ARCHIVED.includes(t.status))] as const,
+    ].filter(([, ts]) => ts.length)
   }, [tasks.data, grouped, query])
 
   const filtering = !!(query || mine || statuses.length || type)
+  const showJira = !!ws?.jira_connected || !!tasks.data?.some((t) => t.jira_key)
   const typeName = (key: string) => templates.data?.find((t) => t.key === key)?.name ?? key
   const open = (id: string) => navigate(`/w/${wid}/tasks/${id}`)
   const closeIdea = () => { params.delete('fromItem'); params.delete('title'); params.delete('new'); setParams(params, { replace: true }) }
@@ -77,6 +85,10 @@ export function Tasks() {
   const list = (
     <>
       <PageHeader title="Tasks" finding={tasks.data && tasksFinding(tasks.data)}>
+        <Button variant="outline" render={<a href={`/api/w/${wid}/tasks/export?${new URLSearchParams({ ...filters, mine: String(mine) })}`} download />}>
+          <Download />Export
+        </Button>
+        {can('task.create') && <Button variant="outline" onClick={() => setImporting(true)}><FileUp />Import</Button>}
         {can('task.create') && <Button onClick={() => setCreating(true)}><Plus />New task</Button>}
       </PageHeader>
 
@@ -134,33 +146,42 @@ export function Tasks() {
             <div className="flex items-center gap-3 border-b px-5 py-2.5 text-xs text-muted-foreground" aria-hidden>
               <span className="w-12 shrink-0">ID</span>
               <span className="flex-1">Title</span>
+              {showJira && <span className="w-24 shrink-0">Jira</span>}
               <span className="hidden w-24 shrink-0 @4xl:inline">Type</span>
               <span className="w-36 shrink-0">Status</span>
               <span className="hidden w-32 shrink-0 @2xl:inline">Author</span>
               <span className="hidden w-24 shrink-0 text-right @xl:inline">Updated</span>
             </div>
             {groups.map(([status, ts]) => (
-              <section key={status ?? 'all'} aria-label={status ? STATUS_LABELS[status] : 'Tasks'}>
+              <section key={status ?? 'all'} aria-label={status === 'archived' ? 'Archived' : status ? STATUS_LABELS[status] : 'Tasks'}>
                 {status && (
                   <h2 className="flex items-baseline gap-2 px-5 pt-4 pb-1.5 text-xs font-medium text-muted-foreground">
-                    {STATUS_LABELS[status]}<span className="num">{ts.length}</span>
+                    {status === 'archived' ? 'Archived' : STATUS_LABELS[status]}<span className="num">{ts.length}</span>
                   </h2>
                 )}
                 {ts.map((t) => (
-                  <button key={t.id} onClick={() => open(t.id)} aria-current={t.id === taskId || undefined}
-                    className={cn('flex h-11 w-full items-center gap-3 border-t border-rule px-5 text-left transition-colors duration-(--motion) hover:bg-accent/40',
+                  <div key={t.id} onClick={() => open(t.id)} aria-current={t.id === taskId || undefined}
+                    className={cn('flex h-11 w-full cursor-pointer items-center gap-3 border-t border-rule px-5 text-left transition-colors duration-(--motion) hover:bg-accent/40',
                       t.id === taskId && 'bg-accent')}>
                     <span className="task-id w-12 shrink-0 text-muted-foreground">#{t.number}</span>
-                    <span className="min-w-0 flex-1 truncate">
-                      <span className="font-medium">{t.title}</span>
+                    <button type="button" className="min-w-0 flex-1 truncate text-left" onClick={(e) => { e.stopPropagation(); open(t.id) }}>
+                      <span className={cn('font-medium', ARCHIVED.includes(t.status) && 'font-normal text-muted-foreground line-through')}>{t.title}</span>
                       {!!t.checklist?.length && <span className="num ml-2 text-xs text-muted-foreground">{t.checklist.filter((c) => c.done).length}/{t.checklist.length}</span>}
                       {t.labels.slice(0, 2).map((l) => <span key={l} className="ml-2 hidden text-xs text-muted-foreground @3xl:inline">{l}</span>)}
-                    </span>
+                    </button>
+                    {showJira && (
+                      <span className="w-24 shrink-0 truncate">
+                        {t.jira_key && (t.jira_url
+                          ? <a href={t.jira_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                              className="task-id underline decoration-muted-foreground/50 underline-offset-2 hover:decoration-foreground" title={`Open ${t.jira_key} in Jira`}>{t.jira_key}</a>
+                          : <span className="task-id">{t.jira_key}</span>)}
+                      </span>
+                    )}
                     <span className="hidden w-24 shrink-0 truncate text-muted-foreground @4xl:inline">{typeName(t.type_key)}</span>
                     <span className="w-36 shrink-0"><StatusBadge status={t.status} /></span>
                     <span className="hidden w-32 shrink-0 truncate text-muted-foreground @2xl:inline">{t.author.name}</span>
                     <span className="num hidden w-24 shrink-0 text-right text-xs text-muted-foreground @xl:inline">{ago(t.updated_at)}</span>
-                  </button>
+                  </div>
                 ))}
               </section>
             ))}
@@ -178,6 +199,7 @@ export function Tasks() {
           <TaskDetailPane key={taskId} wid={wid} taskId={taskId} templates={templates.data} onClose={() => navigate(`/w/${wid}/tasks`)} />
         )}
       />
+      {templates.data && can('task.create') && <ImportTasks wid={wid} templates={templates.data} open={importing} onOpenChange={setImporting} />}
       {templates.data && (
         <TaskForm
           wid={wid} templates={templates.data}
