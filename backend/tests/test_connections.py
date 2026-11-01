@@ -92,3 +92,99 @@ async def test_reminder_and_digest_reach_teams(make_client, db, settings, monkey
     n = len(sent)
     await run_once(db, settings, datetime(2026, 11, 2, 10, 30, tzinfo=timezone.utc))
     assert len(sent) == n  # one digest a day
+
+
+def jira_with(calls: list, status: dict | None = None):
+    def handle(req: httpx.Request) -> httpx.Response:
+        calls.append(req)
+        if req.url.path == "/rest/api/2/issue":
+            return httpx.Response(201, json={"key": "DATA-7"})
+        if req.url.path.endswith("/comment"):
+            return httpx.Response(201, json={})
+        if req.url.path == "/rest/api/2/issue/DATA-7":
+            return httpx.Response(200, json={"fields": {"status": status}})
+        return httpx.Response(404)
+    return httpx.MockTransport(handle)
+
+
+async def linked_task(c, wid) -> str:
+    tid = (await c["dev"].post(f"/api/w/{wid}/tasks", json=STORY)).json()["id"]
+    await c["dev"].post(f"/api/w/{wid}/tasks/{tid}/submit")
+    await c["appr"].post(f"/api/w/{wid}/tasks/{tid}/decision", json={"action": "approve"})
+    assert (await c["dev"].post(f"/api/w/{wid}/tasks/{tid}/jira")).status_code == 200
+    return tid
+
+
+async def test_comment_goes_to_jira_rewritten_by_ai(ws_with_dev, settings, monkeypatch):
+    from app import ai
+    wid, c = ws_with_dev
+    calls, prompts = [], []
+    monkeypatch.setattr(jira, "TRANSPORT", jira_with(calls))
+    monkeypatch.setattr(ai, "TRANSPORT", httpx.MockTransport(lambda req: prompts.append(json.loads(req.content)) or httpx.Response(
+        200, json={"candidates": [{"content": {"parts": [{"text": "Loader retries are now covered by tests."}]}}]})))
+    settings.ai_enabled, settings.vertex_api_key = True, "k"
+    await c["adm"].put(f"/api/w/{wid}/connections/jira", json=JIRA)
+    tid = await linked_task(c, wid)
+    await c["dev"].post(f"/api/w/{wid}/tasks/{tid}/comments", json={"text": "added tests for loader retrys"})
+    sent = json.loads(calls[-1].content)["body"]
+    assert calls[-1].url.path == "/rest/api/2/issue/DATA-7/comment"
+    assert sent.startswith("Loader retries are now covered by tests.") and "Dev, via TeamDesk" in sent
+    assert "added tests for loader retrys" in prompts[0]["contents"][0]["parts"][0]["text"]
+
+
+async def test_comment_sent_as_written_when_ai_off(ws_with_dev, monkeypatch):
+    wid, c = ws_with_dev
+    calls = []
+    monkeypatch.setattr(jira, "TRANSPORT", jira_with(calls))
+    await c["adm"].put(f"/api/w/{wid}/connections/jira", json=JIRA)
+    tid = await linked_task(c, wid)
+    await c["dev"].post(f"/api/w/{wid}/tasks/{tid}/comments", json={"text": "raw words"})
+    assert json.loads(calls[-1].content)["body"].startswith("raw words")
+
+
+async def test_team_template_shapes_the_issue(ws_with_dev, monkeypatch):
+    wid, c = ws_with_dev
+    calls = []
+    monkeypatch.setattr(jira, "TRANSPORT", jira_with(calls))
+    await c["adm"].put(f"/api/w/{wid}/connections/jira", json=JIRA)
+    story = next(t for t in (await c["adm"].get(f"/api/w/{wid}/templates")).json() if t["key"] == "story")
+    for s in story["sections"]:
+        s["jira_field"] = "customfield_10020" if s["key"] == "acceptance" else ""
+    r = await c["adm"].put(f"/api/w/{wid}/templates/story", json={
+        "name": "Story", "jira_issue_type": "Feature", "sections": story["sections"], "default_labels": [],
+        "jira_project_key": "PLAT", "jira_extra_fields": {"components": [{"name": "ETL"}]}})
+    assert r.status_code == 200, r.text
+    await linked_task(c, wid)
+    fields = json.loads(next(x for x in calls if x.url.path == "/rest/api/2/issue").content)["fields"]
+    assert fields["project"] == {"key": "PLAT"} and fields["issuetype"] == {"name": "Feature"}
+    assert fields["customfield_10020"] == "retries 3x" and "Acceptance" not in fields["description"]
+    assert fields["components"] == [{"name": "ETL"}]
+
+
+async def test_status_sync_uses_team_mapping(ws_with_dev, db, settings, monkeypatch):
+    wid, c = ws_with_dev
+    monkeypatch.setattr(jira, "TRANSPORT", jira_with([], {"name": "In Review", "statusCategory": {"key": "indeterminate"}}))
+    await c["adm"].put(f"/api/w/{wid}/connections/jira", json=JIRA)
+    tid = await linked_task(c, wid)
+    await run_once(db, settings, datetime(2026, 11, 2, 9, 0, tzinfo=timezone.utc))
+    task = (await c["dev"].get(f"/api/w/{wid}/tasks/{tid}")).json()
+    assert (task["status"], task["jira_status"]) == ("in_progress", "In Review")
+    # This team's workflow says "In Review" means done for us.
+    await c["adm"].put(f"/api/w/{wid}/connections/jira", json={**JIRA, "token": "", "status_map": {"In Review": "done"}})
+    await db.workspaces.update_one({"_id": wid}, {"$set": {"jira_synced_at": None}})
+    await run_once(db, settings, datetime(2026, 11, 2, 9, 1, tzinfo=timezone.utc))
+    assert (await c["dev"].get(f"/api/w/{wid}/tasks/{tid}")).json()["status"] == "done"
+
+
+async def test_team_channel_gets_approvals(ws_with_dev, monkeypatch):
+    wid, c = ws_with_dev
+    sent = []
+    monkeypatch.setattr(teams, "TRANSPORT", httpx.MockTransport(lambda req: sent.append(json.loads(req.content)) or httpx.Response(202)))
+    assert (await c["dev"].put(f"/api/w/{wid}/connections/teams", json={"url": HOOK})).status_code == 403
+    r = await c["adm"].put(f"/api/w/{wid}/connections/teams", json={"url": HOOK, "events": ["approval_needed"]})
+    assert r.json() == {"events": ["approval_needed"], "has_url": True}
+    tid = (await c["dev"].post(f"/api/w/{wid}/tasks", json=STORY)).json()["id"]
+    await c["dev"].post(f"/api/w/{wid}/tasks/{tid}/submit")
+    await c["appr"].post(f"/api/w/{wid}/tasks/{tid}/decision", json={"action": "approve"})
+    titles = [m["attachments"][0]["content"]["body"][0]["text"] for m in sent]
+    assert titles == ["#1 Add retry to loader needs approval"]  # decisions not chosen, so not posted

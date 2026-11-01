@@ -1,4 +1,4 @@
-"""Background worker: `python -m app.worker`. Fires due reminders, waiting-on nudges and the 9:00 Teams digest.
+"""Background worker: `python -m app.worker`. Fires due reminders, waiting-on nudges, the 9:00 Teams digest and Jira status sync.
 
 Safe with several replicas: each item is claimed with find_one_and_update (sets fired_at / nudge_fired_at)
 before anything is sent, so delivery is at most once. Email failures are logged, not retried."""
@@ -11,6 +11,7 @@ from pymongo import AsyncMongoClient
 
 from app.access import resolve
 from app.config import Settings
+from app.jira import sync_statuses
 from app.db import ensure_indexes, new_id, now
 from app.my_time import today_for
 from app.notifications import send_email
@@ -108,7 +109,7 @@ async def fire_digests(db, settings: Settings, at: datetime) -> int:
 async def run_once(db, settings: Settings, at: datetime | None = None) -> dict:
     at = at or now()
     return {"reminders": await fire_reminders(db, settings, at), "nudges": await fire_nudges(db, settings, at),
-            "digests": await fire_digests(db, settings, at)}
+            "digests": await fire_digests(db, settings, at), "jira": await sync_statuses(db, settings, at)}
 
 
 async def main() -> None:

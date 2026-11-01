@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from app.access import Ctx, require
 from app.audit import record
 from app.db import now
+from app.jira import push_comment, wants_comment
 from app.me import ChecklistItem, mark_promoted
 from app.notifications import approver_subs, notify
 from app.rules import find_matching_rule
@@ -192,6 +193,8 @@ async def comment(task_id: str, body: Comment, ctx: Ctx = Depends(require("task.
     task = await load(ctx, task_id)
     item = await log_activity(ctx, task_id, "comment", {"text": body.text})
     await notify(ctx, [task["author"]["sub"]], "comment", task, f"{ctx.user.name} commented on #{task['number']}")
+    if wants_comment(ctx.workspace, task):
+        ctx.background.add_task(push_comment, ctx.scoped.db, ctx.settings, ctx.workspace, task, ctx.user.name, body.text)
     return out(item)
 
 

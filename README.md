@@ -4,6 +4,8 @@ One shared place for a team's work. Anyone on the team captures ideas and adds t
 
 This release covers phases 1 and 2: workspaces, roles, tasks, the idea inbox, approvals, notifications and settings. Jira, GitHub, docs and AI come next. See `docs/superpowers/specs/2026-10-31-teamdesk-design.md`.
 
+**Full setup guide, including every connector field: [docs/SETUP.md](docs/SETUP.md).**
+
 ## Run it locally
 
 You need Docker, [uv](https://docs.astral.sh/uv/) and Node 22 or newer.
@@ -72,7 +74,9 @@ All settings are environment variables (upper-case names). Per-team settings liv
 | `DEV_USER_SUB`, `DEV_USER_NAME`, `DEV_USER_EMAIL`, `DEV_USER_GROUPS` | empty | Interim identity for requests without a session. Groups are comma-separated. **Leave empty in any shared environment** |
 | `DEV_LOGIN_ENABLED` | `false` | Enables `POST /api/auth/dev-login`, used by automated tests and scripts only |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | empty, `587` | Email notifications. Email is off when `SMTP_HOST` is empty |
-| `PUBLIC_URL` | `http://localhost:5173` | Base URL used in email links |
+| `PUBLIC_URL` | `http://localhost:5173` | Base URL used in email and Teams links |
+| `AI_ENABLED`, `VERTEX_API_KEY`, `GEMINI_MODEL`, `AI_BASE_URL` | `false`, empty, `gemini-2.5-flash`, Vertex | AI (today: tidying comments copied to Jira). All calls are in `backend/app/ai.py` |
+| `JIRA_SYNC_MINUTES` | `10` | How often the worker reads Jira statuses back |
 
 ## Tests
 

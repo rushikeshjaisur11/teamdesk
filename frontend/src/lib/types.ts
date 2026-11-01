@@ -14,18 +14,18 @@ export type Decision = { action: string; by: Person; at: string; reason: string 
 export type Task = {
   id: string; number: number; type_key: string; title: string; fields: Record<string, string>; labels: string[]
   status: TaskStatus; author: Person & { email: string }; decision: Decision | null; duplicate_of: string | null
-  snoozed_until: string | null; jira_key: string | null; jira_url?: string | null; jira_error?: string | null; created_at: string; updated_at: string; submitted_at: string | null
+  snoozed_until: string | null; jira_key: string | null; jira_url?: string | null; jira_error?: string | null; jira_status?: string | null; created_at: string; updated_at: string; submitted_at: string | null
   checklist?: { id: string; text: string; done: boolean }[]
 }
 export type SimilarTask = Pick<Task, 'id' | 'number' | 'title' | 'status'>
 
-export type Section = { key: string; label: string; required: boolean; hint: string }
-export type Template = { id: string; key: string; name: string; jira_issue_type: string; sections: Section[]; default_labels: string[] }
+export type Section = { key: string; label: string; required: boolean; hint: string; jira_field?: string }
+export type Template = { id: string; key: string; name: string; jira_issue_type: string; sections: Section[]; default_labels: string[]; jira_project_key?: string; jira_extra_fields?: Record<string, unknown> }
 
 export type Idea = { id: string; owner_sub: string; text: string; promoted_task_id: string | null; created_at: string }
 export type Activity = {
   id: string; task_id: string; at: string; actor: Person
-  kind: 'created' | 'edited' | 'submitted' | 'decision' | 'comment' | 'auto_approved' | 'jira_created' | 'jira_failed'
+  kind: 'created' | 'edited' | 'submitted' | 'decision' | 'comment' | 'auto_approved' | 'jira_created' | 'jira_failed' | 'jira_status' | 'jira_comment_failed'
   data: Record<string, unknown>
 }
 export type Rule = { id: string; name: string; enabled: boolean; type_keys: string[]; author_roles: string[]; labels_any: string[] }

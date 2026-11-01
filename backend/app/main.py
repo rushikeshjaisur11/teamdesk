@@ -36,6 +36,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(jira.router)
     app.include_router(me.router)
     app.include_router(teams.router)
+    app.include_router(teams.ws_router)
     app.include_router(calendar_feed.me_router)
     app.include_router(calendar_feed.public_router)
     app.include_router(approvals.router)

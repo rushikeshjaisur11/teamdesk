@@ -24,3 +24,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = "teamdesk@localhost"
     public_url: str = "http://localhost:5173"
+    # AI (Vertex AI Gemini, API key). Off unless AI_ENABLED=true and VERTEX_API_KEY is set. Every call is in app/ai.py.
+    ai_enabled: bool = False
+    vertex_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
+    ai_base_url: str = "https://aiplatform.googleapis.com/v1"
+    jira_sync_minutes: int = 10

@@ -33,6 +33,8 @@ function describe(a: Activity) {
     case 'comment': return 'commented'
     case 'jira_created': return `created Jira issue ${a.data.key}`
     case 'jira_failed': return `tried to create the Jira issue: ${a.data.error}`
+    case 'jira_status': return `moved it to "${a.data.status}"`
+    case 'jira_comment_failed': return `couldn't take the last comment: ${a.data.error}`
   }
 }
 
@@ -97,9 +99,7 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 pt-4 text-muted-foreground">
         <StatusBadge status={t.status} />
         <span title={new Date(t.updated_at).toLocaleString()}>Updated {ago(t.updated_at)}</span>
-        {t.jira_key && (t.jira_url
-          ? <a className="task-id text-foreground underline underline-offset-2" href={t.jira_url} target="_blank" rel="noreferrer">{t.jira_key}</a>
-          : <span className="task-id text-foreground">{t.jira_key}</span>)}
+        {t.jira_key && <span className="task-id text-foreground">{t.jira_key}{t.jira_status && <span className="font-sans text-muted-foreground"> · {t.jira_status} in Jira</span>}</span>}
       </div>
       {t.status === 'jira_failed' && t.jira_error && <p role="alert" className="mx-6 mt-3 text-destructive">{t.jira_error}</p>}
       <TaskProgress task={t} />
@@ -120,6 +120,11 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
           && (t.author.sub === me?.user.sub || can('task.approve')) && (
           <Button onClick={() => jira.mutate()} disabled={jira.isPending}>
             <SquareArrowOutUpRight />{jira.isPending ? 'Creating' : t.status === 'jira_failed' ? 'Retry Jira' : 'Create Jira issue'}
+          </Button>
+        )}
+        {t.jira_url && (
+          <Button variant="outline" render={<a href={t.jira_url} target="_blank" rel="noreferrer" />}>
+            <SquareArrowOutUpRight />Open {t.jira_key} in Jira
           </Button>
         )}
         {!readOnly && <RemindTask wid={wid} task={t} />}
@@ -171,7 +176,7 @@ export function TaskDetailPane({ wid, taskId, templates, onClose, readOnly = fal
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && comment.trim()) { e.preventDefault(); send.mutate() } }}
           />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Ctrl + Enter to send</span>
+            <span>Ctrl + Enter to send{t.jira_key && ws?.jira_connected && `. Also added to ${t.jira_key} in Jira.`}</span>
             <Button size="sm" type="submit" disabled={!comment.trim() || send.isPending}>Comment</Button>
           </div>
         </form>

@@ -9,6 +9,7 @@ from app.access import Ctx, require, resolve
 from app.config import Settings
 from app.db import now
 from app.scoped import out
+from app.teams import post_workspace
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +48,8 @@ async def notify(ctx: Ctx, user_subs: list[str], kind: str, task: dict, text: st
         await ctx.scoped.col("notifications").insert(
             {"user_sub": sub, "kind": kind, "task_id": task["_id"], "text": text, "read": False, "created_at": now()})
     settings: Settings = ctx.settings
+    ctx.background.add_task(post_workspace, settings, ctx.workspace, kind, text, [task["title"]],
+                            f"/w/{ctx.scoped.workspace_id}/tasks/{task['_id']}")
     if not settings.smtp_host or not recipients:
         return
     link = f"{settings.public_url}/w/{ctx.scoped.workspace_id}/tasks/{task['_id']}"
