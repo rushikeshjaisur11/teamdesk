@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from pymongo import AsyncMongoClient
 
-from app import approvals, audit, calendar_feed, auth, jira, me, notifications, rules, tasks, teams, templates, workspaces
+from app import approvals, audit, calendar_feed, auth, docs, jira, me, meetings, notifications, rules, tasks, teams, templates, workspaces
 from app.config import APP_NAME, Settings
 from app.db import ensure_indexes
 
@@ -34,6 +34,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(templates.router)
     app.include_router(tasks.router)
     app.include_router(jira.router)
+    app.include_router(docs.router)
+    app.include_router(meetings.router)
     app.include_router(me.router)
     app.include_router(teams.router)
     app.include_router(teams.ws_router)

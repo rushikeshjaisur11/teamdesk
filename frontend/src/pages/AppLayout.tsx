@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Building2, CalendarCheck, Hourglass, Inbox, Keyboard, Lightbulb, ListChecks, ListTodo, Moon, Search, Settings, Stamp, Sun, UserCog } from 'lucide-react'
+import { BookOpen, Building2, CalendarCheck, Hourglass, Inbox, Keyboard, Lightbulb, ListChecks, ListTodo, Moon, NotebookPen, Search, Settings, Stamp, Sun, UserCog } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Outlet, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
@@ -68,6 +68,8 @@ export function AppLayout() {
       top: <WorkspaceSwitcher me={me} wid={wid} compact={false} />,
       items: [
         { to: `/w/${wid}/tasks`, label: 'Tasks', icon: ListTodo },
+        { to: `/w/${wid}/docs`, label: 'Docs', icon: BookOpen },
+        ...(can('task.create') ? [{ to: `/w/${wid}/meetings`, label: 'Meeting notes', icon: NotebookPen }] : []),
         ...(can('task.approve') ? [{ to: `/w/${wid}/approvals`, label: 'Approvals', icon: Stamp, count: approvals.data?.count }] : []),
         ...(can('settings.manage') ? [{ to: `/w/${wid}/settings`, label: 'Settings', icon: Settings }] : []),
       ],

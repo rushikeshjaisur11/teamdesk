@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
+from app import ai
 from app.access import DEFAULT_ROLES, PERMISSIONS, Ctx, require, resolve, resolve_user
 from app.audit import record
 from app.auth import User, current_user, is_platform_owner
@@ -76,6 +77,7 @@ async def me(request: Request, user: User = Depends(current_user)):
                                "roles": roles, "permissions": sorted(perms), "jira_connected": bool(ws.get("jira"))})
     return {"user": {"sub": user.sub, "name": user.name, "email": user.email,
                      "is_platform_owner": is_platform_owner(user, request.app.state.settings)},
+            "ai_enabled": ai.enabled(request.app.state.settings),
             "workspaces": workspaces}
 
 

@@ -12,7 +12,9 @@ This guide covers everything needed to run TeamDesk and connect it to Jira and M
 8. [Connector: Microsoft Teams channel](#8-connector-microsoft-teams-channel)
 9. [Personal Teams reminders](#9-personal-teams-reminders)
 10. [AI](#10-ai)
-11. [Troubleshooting](#11-troubleshooting)
+11. [Docs space](#11-docs-space)
+12. [Meeting notes](#12-meeting-notes)
+13. [Troubleshooting](#13-troubleshooting)
 
 Who does what:
 
@@ -277,10 +279,61 @@ AI is off until the platform team turns it on with `AI_ENABLED=true` and a `VERT
 
 - **Where the calls are:** every AI call is in `backend/app/ai.py`. It sends a Gemini `generateContent` request to `AI_BASE_URL`/publishers/google/models/`GEMINI_MODEL`, with the key in the `x-goog-api-key` header.
 - **Using a proxy:** to route through a company proxy, change the `generate` function in that one file.
-- **What uses it today:** tidying Jira comments (7.3). Each team can still turn that off.
+- **What uses it today:**
+  - tidying Jira comments (7.3), which each team can still turn off;
+  - meeting summaries and proposed tasks (section 12).
 - **If AI fails:** the original text is used, so nothing is lost.
 
-## 11. Troubleshooting
+## 11. Docs space
+
+**Where:** **Docs** in the sidebar of each workspace. Every team has its own docs; other teams can't see or search them.
+
+| Who | Can |
+|---|---|
+| Anyone in the workspace (`task.view`) | Read docs, search them, see version history |
+| `doc.edit` (Member, Approver, Admin by default) | Create, edit, restore and delete docs |
+| `doc.manage_folders` (Admin by default) | Create, rename and delete folders |
+
+- **New doc:** pick a title, a folder and a starting template (Blank, Project setup, Runbook, How-to).
+- **Writing:** docs are Markdown, with a live preview beside the editor:
+  - `#`, `##` and `###` headings;
+  - `- ` bullets and `1. ` steps;
+  - code blocks fenced with three backticks;
+  - `**bold**`, `` `code` ``, and links.
+  - **Ctrl + S** saves.
+- **Search:** the box above the tree searches every doc's title and text and shows a snippet. **Ctrl K** finds docs too.
+- **History:** every save keeps the previous version (who and when). Open **History**, pick a version, and **Restore** puts it in the editor; nothing changes until you save.
+- **Two people editing:** if someone saved after you opened the editor, Save warns you and names who it was. Copy your changes, or choose **Save anyway** to overwrite; their version stays in History.
+- **Folders:** a folder must be empty before it can be deleted.
+
+## 12. Meeting notes
+
+**Where:** **Meeting notes** in the sidebar of each workspace.
+- **Who:** anyone who can create tasks adds meetings; anyone in the workspace can read them.
+- **Needs AI:** summaries and proposed tasks need AI (section 10). Without it you can still save notes and transcripts.
+
+| Field | What to fill in | Example |
+|---|---|---|
+| **Meeting** | A name for this meeting. | `Standup 3 Nov` |
+| **Group** | The series it belongs to. Meetings with the same group are listed together, newest first; pick an existing group from the suggestions or type a new one. Leave empty for one-off meetings, which show under "Other meetings". | `Daily standup`, `Sprint planning` |
+| **Date** | When it happened. | `2026-11-03` |
+| **Notes or transcript** | Paste notes, or click **Upload transcript**. | |
+
+**Upload transcript** accepts:
+- `.vtt` and `.docx`, from Teams: open the meeting, then **Recap → Transcript → Download**.
+- `.txt` and `.md` files.
+- Files up to 5 MB.
+
+For `.vtt`, timestamps are removed and each line becomes "Name: what they said". The text is added to the notes, so you can upload several parts.
+
+**Summarize and find tasks:**
+1. AI writes a summary with **Decisions**, **Action items** and **Open questions**.
+2. It proposes one task for each piece of work someone agreed to do, with a suggested type and the person named in the notes.
+3. Untick what you don't want, fix titles or types, then click **Create N draft tasks**.
+
+The tasks are created as **drafts** in the team's Tasks list. Each draft's first section contains the details, the suggested owner and the meeting it came from. Nothing is submitted automatically: open each draft, complete it, and submit. Created tasks are listed on the meeting as links. **Save to Docs** stores the summary and notes as a doc.
+
+## 13. Troubleshooting
 
 | What you see | Why, and the fix |
 |---|---|
