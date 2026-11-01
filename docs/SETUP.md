@@ -14,7 +14,8 @@ This guide covers everything needed to run TeamDesk and connect it to Jira and M
 10. [AI](#10-ai)
 11. [Docs space](#11-docs-space)
 12. [Meeting notes](#12-meeting-notes)
-13. [Troubleshooting](#13-troubleshooting)
+13. [Excel import and export](#13-excel-import-and-export)
+14. [Troubleshooting](#14-troubleshooting)
 
 Who does what:
 
@@ -340,7 +341,35 @@ For `.vtt`, timestamps are removed and each line becomes "Name: what they said".
 
 The tasks are created as **drafts** in the team's Tasks list. Each draft's first section contains the details, the suggested owner and the meeting it came from. Nothing is submitted automatically: open each draft, complete it, and submit. Created tasks are listed on the meeting as links. **Save to Docs** stores the summary and notes as a doc.
 
-## 13. Troubleshooting
+## 13. Excel import and export
+
+**Where:** the **Import** and **Export** buttons at the top of **Tasks**.
+
+**Import** (anyone who can create tasks) moves an existing task sheet into TeamDesk:
+1. Choose the `.xlsx` file. TeamDesk reads the first sheet; the first filled row is the header. Up to 1,000 rows at a time.
+2. Check the first rows and map the columns. TeamDesk guesses from the header names; change any guess.
+
+| Mapping | What it does | Example column |
+|---|---|---|
+| **Title** (required) | The task's title. Rows with an empty title are skipped. | `Task`, `Summary` |
+| **Task type column** | Matched to a task type by name or key (`Story`, `bug`). Anything else gets the default below. | `Kind` |
+| **Type when the sheet doesn't say** | The task type for rows without a recognised type. | Tech debt |
+| **Labels column** | Comma-separated labels. | `etl, reliability` |
+| **Sections** | Which column fills each section of the default type. | `Why` → Context |
+
+Columns you don't map are added to the task's first section as "Column: value" lines (for example `Owner: Priya`), so nothing in the sheet is lost.
+
+By default, every row becomes a **draft** you can review. Tick **Submit them for approval now** to submit them straight away:
+- your auto-approve rules apply;
+- rows missing a required section stay as drafts, and their numbers are listed.
+
+**Export** (everyone) downloads the task list you're looking at, with the same search and filters, as an `.xlsx` file named after the workspace and date. Its columns are:
+- ID, Title, Type, Status, Author, Labels
+- Jira key and Jira link
+- Created and Updated
+- Details: every section of the task.
+
+## 14. Troubleshooting
 
 | What you see | Why, and the fix |
 |---|---|

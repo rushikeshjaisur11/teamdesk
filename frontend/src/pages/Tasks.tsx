@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Plus, Search } from 'lucide-react'
+import { ChevronDown, Download, FileUp, Plus, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/PageHeader'
@@ -19,6 +19,7 @@ import type { Task, TaskStatus } from '@/lib/types'
 import { useDebounced } from '@/lib/useDebounced'
 import { useShortcut } from '@/lib/useShortcut'
 import { cn } from '@/lib/utils'
+import { ImportTasks } from './ImportTasks'
 import { TaskDetailPane } from './TaskDetailPane'
 import { TaskForm } from './TaskForm'
 
@@ -52,6 +53,7 @@ export function Tasks() {
   const [type, setType] = useState('')
   const [grouped, setGrouped] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [importing, setImporting] = useState(false)
   const query = useDebounced(q.trim(), 250)
   const fromItem = params.get('fromItem') ?? undefined
   const wantsNew = params.has('new')
@@ -83,6 +85,10 @@ export function Tasks() {
   const list = (
     <>
       <PageHeader title="Tasks" finding={tasks.data && tasksFinding(tasks.data)}>
+        <Button variant="outline" render={<a href={`/api/w/${wid}/tasks/export?${new URLSearchParams({ ...filters, mine: String(mine) })}`} download />}>
+          <Download />Export
+        </Button>
+        {can('task.create') && <Button variant="outline" onClick={() => setImporting(true)}><FileUp />Import</Button>}
         {can('task.create') && <Button onClick={() => setCreating(true)}><Plus />New task</Button>}
       </PageHeader>
 
@@ -193,6 +199,7 @@ export function Tasks() {
           <TaskDetailPane key={taskId} wid={wid} taskId={taskId} templates={templates.data} onClose={() => navigate(`/w/${wid}/tasks`)} />
         )}
       />
+      {templates.data && can('task.create') && <ImportTasks wid={wid} templates={templates.data} open={importing} onOpenChange={setImporting} />}
       {templates.data && (
         <TaskForm
           wid={wid} templates={templates.data}
