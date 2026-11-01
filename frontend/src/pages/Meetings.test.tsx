@@ -59,3 +59,17 @@ it('summarizes and creates only the ticked tasks as drafts', async () => {
   const last = fn.mock.calls.filter(([path, init]) => path === '/api/w/w1/meetings/m1' && init?.method === 'PUT').at(-1)!
   expect(last[1]!.json).toMatchObject({ created: [{ id: 't9', number: 9 }], proposed: [{ title: 'Write the runbook' }] })
 })
+
+it('uploading from the title row makes the meeting and summarizes it', async () => {
+  const made = { ...M1, id: 'm9', title: 'Standup 3 Nov', notes: 'Sam: ship it' }
+  const fn = mockApi({ 'GET /api/auth/me': me(true), 'GET /api/w/w1/meetings': [], 'GET /api/w/w1/templates': [STORY_TEMPLATE],
+    'POST /api/w/w1/meetings/parse': { text: 'Sam: ship it' }, 'POST /api/w/w1/meetings': made,
+    'POST /api/w/w1/meetings/m9/extract': { ...made, summary: '## Decisions\n\n- Ship it' }, 'GET /api/w/w1/meetings/m9': { ...made, summary: '## Decisions\n\n- Ship it' } })
+  render('/w/w1/meetings')
+  expect(await screen.findByRole('heading', { level: 1, name: 'Meeting notes' })).toBeInTheDocument()
+  await userEvent.upload(screen.getByLabelText('Upload a transcript file'), new File(['WEBVTT'], 'Standup_3_Nov.vtt', { type: 'text/vtt' }))
+  expect(await screen.findByRole('heading', { name: 'Decisions' })).toBeInTheDocument()
+  const post = fn.mock.calls.find(([path, init]) => path === '/api/w/w1/meetings' && init?.method === 'POST')!
+  expect(post[1]!.json).toMatchObject({ title: 'Standup 3 Nov', notes: 'Sam: ship it' })
+  expect(fn).toHaveBeenCalledWith('/api/w/w1/meetings/m9/extract', expect.objectContaining({ method: 'POST' }))
+})

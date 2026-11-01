@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, FilePlus, FileText, Folder, FolderPlus, History, Pencil, Search, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, History, Pencil, Search, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/EmptyState'
 import { Markdownish } from '@/components/Markdownish'
+import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -126,10 +127,10 @@ function DocView({ wid, docId, folders, canEdit, onDeleted }: { wid: string; doc
   }
 
   return (
-    <article className="mx-auto w-full max-w-3xl px-8 py-8">
+    <article className="mx-auto w-full max-w-3xl px-5 py-6 md:px-8 md:py-8">
       <header className="mb-6 flex flex-wrap items-start gap-3 border-b pb-4">
         <div className="mr-auto min-w-0">
-          <h1 className="text-2xl font-semibold tracking-[-0.01em] break-words">{d.title}</h1>
+          <h2 className="text-2xl font-semibold tracking-[-0.01em] break-words">{d.title}</h2>
           <p className="mt-1 text-muted-foreground">Edited by {d.updated_by.name} {ago(d.updated_at)}</p>
         </div>
         {canEdit && <Button variant="outline" onClick={() => startEdit()}><Pencil />Edit</Button>}
@@ -173,7 +174,7 @@ function DocView({ wid, docId, folders, canEdit, onDeleted }: { wid: string; doc
 }
 
 export function Docs() {
-  const { wid, can } = useWorkspace()
+  const { wid, ws, can } = useWorkspace()
   const { docId } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -200,20 +201,22 @@ export function Docs() {
   })
 
   const f = folders.data ?? []
+  const count = docs.data?.length ?? 0
   return (
-    <div className="flex min-h-0 flex-1">
-      <aside aria-label="Docs" className="flex w-72 shrink-0 flex-col border-r bg-card/40">
-        <div className="space-y-2 border-b p-3">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <PageHeader title="Docs" finding={docs.data && (count
+        ? `${count} ${count === 1 ? 'doc' : 'docs'}${f.length ? ` in ${f.length} ${f.length === 1 ? 'folder' : 'folders'}` : ''}. Only ${ws?.name ?? 'this team'} can see them.`
+        : `Nothing written down yet. Only ${ws?.name ?? 'this team'} will see what you add.`)}>
+        {can('doc.manage_folders') && <Button variant="outline" onClick={() => setNewFolder({ name: '', parent: '' })}><FolderPlus />New folder</Button>}
+        {canEdit && <Button onClick={() => setNewDoc({ title: '', folder: '', template: 'Blank' })}><FilePlus />New doc</Button>}
+      </PageHeader>
+      <div className="mx-6 mb-6 flex min-h-[28rem] flex-1 overflow-hidden rounded-lg border bg-card">
+      <aside aria-label="Docs" className={cn('w-full shrink-0 flex-col border-r md:w-72', docId ? 'hidden md:flex' : 'flex', docs.data && !count && '!hidden')}>
+        <div className="border-b p-3">
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search docs" aria-label="Search docs" className="bg-background pl-8" />
           </div>
-          {canEdit && (
-            <div className="flex gap-1.5">
-              <Button size="sm" className="flex-1" onClick={() => setNewDoc({ title: '', folder: '', template: 'Blank' })}><FilePlus />New doc</Button>
-              {can('doc.manage_folders') && <Button size="sm" variant="outline" onClick={() => setNewFolder({ name: '', parent: '' })}><FolderPlus />Folder</Button>}
-            </div>
-          )}
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto p-2">
           {query ? (
@@ -234,13 +237,15 @@ export function Docs() {
         </nav>
       </aside>
 
-      <section className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+      <section className={cn('min-w-0 flex-1 flex-col overflow-y-auto md:flex', docId || (docs.data && !count) ? 'flex' : 'hidden')}>
+        {docId && <Button variant="ghost" size="sm" className="m-3 self-start md:hidden" onClick={() => navigate(`/w/${wid}/docs`)}><ChevronLeft />All docs</Button>}
         {docId ? <DocView key={docId} wid={wid} docId={docId} folders={f} canEdit={canEdit} onDeleted={() => navigate(`/w/${wid}/docs`)} />
           : docs.data && !docs.data.length
             ? <EmptyState title="No docs yet" body="Write down how to set up a project, run a job or fix an alert, so nobody has to ask twice."
                 action={canEdit ? <Button onClick={() => setNewDoc({ title: '', folder: '', template: 'Project setup' })}><FilePlus />Write the first doc</Button> : undefined} />
             : <EmptyState title="Pick a doc" body="Choose one on the left, or search across every doc in this team." />}
       </section>
+      </div>
 
       <Dialog open={!!newDoc} onOpenChange={(o) => !o && setNewDoc(null)}>
         {newDoc && (

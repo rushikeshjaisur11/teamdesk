@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarPlus, FileText, ListPlus, Sparkles, Trash2, Upload } from 'lucide-react'
+import { CalendarPlus, ChevronLeft, FileText, ListPlus, Sparkles, Trash2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/EmptyState'
 import { Markdownish } from '@/components/Markdownish'
+import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -119,7 +120,7 @@ function MeetingView({ wid, id, series, aiOn, canWrite }: { wid: string; id: str
               <input ref={file} type="file" accept=".vtt,.docx,.txt,.md" className="hidden" aria-label="Transcript file"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = '' }} />
               <Button variant="outline" size="sm" disabled={upload.isPending} onClick={() => file.current?.click()}>
-                <Upload />{upload.isPending ? 'Reading file' : 'Upload transcript'}</Button>
+                <Upload />{upload.isPending ? 'Reading file' : 'Add a file'}</Button>
             </>}
           </div>
           <Textarea id="m-notes" rows={18} value={m.notes} maxLength={200000} disabled={!canWrite} className="bg-card"
@@ -204,56 +205,81 @@ export function Meetings() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const k = keys(wid)
+  const file = useRef<HTMLInputElement>(null)
   const list = useQuery({ queryKey: k.list, queryFn: () => api<MeetingSummary[]>(wpath(wid, '/meetings')) })
   const canWrite = can('task.create')
+  const aiOn = !!me?.ai_enabled
   const groups = groupMeetings(list.data ?? [])
   const series = groups.map(([g]) => g).filter((g) => g !== OTHER)
-  const create = useMutation({
-    mutationFn: (group: string) => api<Meeting>(wpath(wid, '/meetings'), { method: 'POST', json: {
-      title: group ? `${group} ${formatDay(localToday())}` : `Meeting ${formatDay(localToday())}`, series: group, date: localToday() } }),
-    onSuccess: (m) => { qc.invalidateQueries({ queryKey: k.list }); navigate(`/w/${wid}/meetings/${m.id}`) },
+  const current = list.data?.find((m) => m.id === meetingId)
+  const open = (m: Meeting) => { qc.setQueryData(k.one(m.id), m); qc.invalidateQueries({ queryKey: k.list, exact: true }); navigate(`/w/${wid}/meetings/${m.id}`) }
+  const newMeeting = (group: string, notes = '', title = '') => api<Meeting>(wpath(wid, '/meetings'), { method: 'POST', json: {
+    title: title || (group ? `${group} ${formatDay(localToday())}` : `Meeting ${formatDay(localToday())}`), series: group, date: localToday(), notes } })
+  const create = useMutation({ mutationFn: (group: string) => newMeeting(group), onSuccess: open, onError: (e) => toast.error(e.message) })
+  // Upload is the main way in: read the file, make the meeting, and (with AI on) summarize it straight away.
+  const upload = useMutation({
+    mutationFn: async (f: File) => {
+      const { text } = await api<{ text: string }>(wpath(wid, '/meetings/parse'), { method: 'POST', json: { filename: f.name, data: await toBase64(f) } })
+      const m = await newMeeting(current?.series ?? '', text, f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '))
+      return aiOn ? api<Meeting>(wpath(wid, `/meetings/${m.id}/extract`), { method: 'POST' }).catch((e: Error) => { toast.error(e.message); return m }) : m
+    },
+    onSuccess: open,
     onError: (e) => toast.error(e.message),
   })
-  const current = list.data?.find((m) => m.id === meetingId)
+  const uploadButton = (label: string) => (
+    <Button disabled={upload.isPending} onClick={() => file.current?.click()}>
+      <Upload />{upload.isPending ? (aiOn ? 'Reading and summarizing' : 'Reading file') : label}
+    </Button>
+  )
+  const count = list.data?.length ?? 0
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <aside aria-label="Meetings" className="flex w-72 shrink-0 flex-col border-r bg-card/40">
-        <div className="border-b p-3">
-          {canWrite && <Button size="sm" className="w-full" disabled={create.isPending} onClick={() => create.mutate(current?.series ?? '')}>
-            <CalendarPlus />New meeting{current?.series ? ` in ${current.series}` : ''}</Button>}
-        </div>
-        <nav className="min-h-0 flex-1 overflow-y-auto p-2">
-          {list.isPending ? <div className="space-y-2 p-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
-            : groups.map(([group, ms]) => (
-              <section key={group} aria-label={group} className="mb-4">
-                <h2 className="flex items-center justify-between px-2 pb-1 text-xs font-medium text-muted-foreground">
-                  <span className="truncate">{group}</span><span className="num">{ms.length}</span>
-                </h2>
-                {ms.map((m) => (
-                  <Link key={m.id} to={`/w/${wid}/meetings/${m.id}`} aria-current={m.id === meetingId || undefined}
-                    className={cn('flex items-baseline gap-2 rounded-md px-2 py-1.5 text-muted-foreground hover:bg-accent/60 hover:text-foreground',
-                      m.id === meetingId && 'bg-accent text-foreground')}>
-                    <span className="min-w-0 flex-1 truncate">{m.title}</span>
-                    <span className="num shrink-0 text-xs">{formatDay(m.date)}</span>
-                  </Link>
-                ))}
-                {canWrite && group !== OTHER && (
-                  <button type="button" className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => create.mutate(group)}>
-                    + Add to {group}
-                  </button>
-                )}
-              </section>
-            ))}
-        </nav>
-      </aside>
-      <section className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        {meetingId ? <MeetingView key={meetingId} wid={wid} id={meetingId} series={series} aiOn={!!me?.ai_enabled} canWrite={canWrite} />
-          : list.data && !list.data.length
-            ? <EmptyState title="No meetings yet" body="Upload a Teams transcript or paste notes. AI writes the summary and proposes tasks; you choose which become drafts."
-                action={canWrite ? <Button onClick={() => create.mutate('')}><CalendarPlus />New meeting</Button> : undefined} />
-            : <EmptyState title="Pick a meeting" body="Meetings are grouped by series, like Daily standup or Sprint planning. Set the group on each meeting." />}
-      </section>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <input ref={file} type="file" accept=".vtt,.docx,.txt,.md" className="hidden" aria-label="Upload a transcript file"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = '' }} />
+      <PageHeader title="Meeting notes" finding={list.data && (count
+        ? `${count} ${count === 1 ? 'meeting' : 'meetings'} in ${series.length ? `${series.length} ${series.length === 1 ? 'group' : 'groups'}` : 'no groups yet'}.`
+        : aiOn ? 'Upload a transcript to get its summary and the tasks it agreed.' : 'Upload a transcript or paste notes to keep them with the team.')}>
+        {canWrite && <Button variant="outline" disabled={create.isPending} onClick={() => create.mutate(current?.series ?? '')}><CalendarPlus />Blank meeting</Button>}
+        {canWrite && uploadButton('Upload transcript')}
+      </PageHeader>
+      <div className="mx-6 mb-6 flex min-h-[28rem] flex-1 overflow-hidden rounded-lg border bg-card">
+        <aside aria-label="Meetings" className={cn('w-full shrink-0 flex-col border-r md:w-72', meetingId ? 'hidden md:flex' : 'flex', list.data && !count && '!hidden')}>
+          <nav className="min-h-0 flex-1 overflow-y-auto p-2">
+            {list.isPending ? <div className="space-y-2 p-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
+              : !count ? <p className="p-2 text-muted-foreground">No meetings yet.</p>
+              : groups.map(([group, ms]) => (
+                <section key={group} aria-label={group} className="mb-4">
+                  <h2 className="flex items-center justify-between px-2 pb-1 text-xs font-medium text-muted-foreground">
+                    <span className="truncate">{group}</span><span className="num">{ms.length}</span>
+                  </h2>
+                  {ms.map((m) => (
+                    <Link key={m.id} to={`/w/${wid}/meetings/${m.id}`} aria-current={m.id === meetingId || undefined}
+                      className={cn('flex items-baseline gap-2 rounded-md px-2 py-1.5 text-muted-foreground hover:bg-accent/60 hover:text-foreground',
+                        m.id === meetingId && 'bg-accent text-foreground')}>
+                      <span className="min-w-0 flex-1 truncate">{m.title}</span>
+                      <span className="num shrink-0 text-xs">{formatDay(m.date)}</span>
+                    </Link>
+                  ))}
+                  {canWrite && group !== OTHER && (
+                    <button type="button" className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => create.mutate(group)}>
+                      + Add to {group}
+                    </button>
+                  )}
+                </section>
+              ))}
+          </nav>
+        </aside>
+        <section className={cn('min-w-0 flex-1 flex-col overflow-y-auto md:flex', meetingId || (list.data && !count) ? 'flex' : 'hidden')}>
+          {meetingId && <Button variant="ghost" size="sm" className="m-3 mb-0 self-start md:hidden" onClick={() => navigate(`/w/${wid}/meetings`)}><ChevronLeft />All meetings</Button>}
+          {meetingId ? <MeetingView key={meetingId} wid={wid} id={meetingId} series={series} aiOn={aiOn} canWrite={canWrite} />
+            : !count && list.data
+              ? <EmptyState title="Upload your first transcript"
+                  body={<>In Teams, open the meeting's Recap, then Transcript, then Download (.docx or .vtt). Upload it here{aiOn ? ' and you get the summary and the tasks it agreed, ready to add.' : '.'} Plain .txt or .md notes work too.</>}
+                  action={canWrite ? uploadButton('Upload transcript') : undefined} />
+              : <EmptyState title="Pick a meeting" body="Meetings are grouped by series, like Daily standup or Sprint planning. Set the group on each meeting." />}
+        </section>
+      </div>
     </div>
   )
 }

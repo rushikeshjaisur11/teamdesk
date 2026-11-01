@@ -319,6 +319,13 @@ AI is off until the platform team turns it on with `AI_ENABLED=true` and a `VERT
 | **Date** | When it happened. | `2026-11-03` |
 | **Notes or transcript** | Paste notes, or click **Upload transcript**. | |
 
+**The quickest way:** click **Upload transcript** in the title row. TeamDesk does not connect to Teams for this; you download the file and upload it yourself. In one step it:
+1. reads the file;
+2. creates a meeting named after the file, dated today, in the group you're viewing;
+3. with AI on, writes the summary and proposes the tasks.
+
+Use **Blank meeting** to paste notes instead, and **Add a file** inside a meeting to append another part.
+
 **Upload transcript** accepts:
 - `.vtt` and `.docx`, from Teams: open the meeting, then **Recap → Transcript → Download**.
 - `.txt` and `.md` files.
