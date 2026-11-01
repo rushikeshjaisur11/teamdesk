@@ -28,8 +28,7 @@ Updated 2026-11-01. Read this first when resuming. The setup and admin guide is 
    - per-user Jira accounts;
    - copying comments written before the issue existed.
 3. **Docs, the rest:** rich-text editor, images, doc-to-task links, Confluence import, "Ask the docs" with citations and the Missing docs list (main spec §7.9).
-4. **Company login** (SSO with entitlement groups) to replace `DEV_USER_*`. Needed before any shared rollout.
-5. **Smaller items:**
+4. **Smaller items:**
    - Meeting notes: match suggested owners to members.
    - Excel import: a Status column, and .csv.
    - The calendar feed's rate limit is per replica.
@@ -39,7 +38,7 @@ Updated 2026-11-01. Read this first when resuming. The setup and admin guide is 
 
 ## Owner decisions to keep
 
-- No sign-in screen yet; the stand-in user is `DEV_USER_*`.
+- No sign-in screen yet; the stand-in user is `DEV_USER_*`. The owner connects company login (SSO) themselves: don't build it.
 - Nobody can read another person's My space, admins included. Enforced in the app; no encryption at rest.
 - AI reads a person's own items only when their "Use AI on my space" switch is on (the default). AI is configured by env only, never in the UI.
 - Developer and tech tasks skip approval. Self-approval is always blocked (compliance). Out of office never lends approval rights; the backup must already be an approver.
